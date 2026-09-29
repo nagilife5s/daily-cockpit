@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>daily-cockpit</title>
+<title>Daily-Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap" rel="stylesheet">
@@ -515,7 +515,12 @@
   }
   .tl-ev .lesson .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-ev .lesson .span-badge { display: none; }    /* 何校時ぶんかは箱の長さと時刻で分かる */
+  /* Week の1コマ（50分）は高さが足りないので、概要がある授業は 名前1行＋概要1行 にする（場所は省く）。
+     概要が無いものは今まで通り 名前2行（2026-09-29 本人要望: 理科等の概要を Week で見たい） */
   .tl-week .tl-ev.is-compact .lesson .sub { display: none; }
+  .tl-week .tl-ev.is-compact .lesson.has-sum .sub { display: block; }
+  .tl-week .tl-ev.is-compact .lesson.has-sum .sub .pl { display: none; }
+  .tl-week .tl-ev.is-compact .lesson.has-sum .nm { -webkit-line-clamp: 1; }
   .tl-ev .taskcard { padding: 3px 6px; }
   .tl-ev .taskcard .nm {
     line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
@@ -1383,7 +1388,7 @@
 <div id="app">
 
   <header class="top">
-    <span class="brand">daily-cockpit</span>
+    <span class="brand">Daily-Cockpit</span>
     <!-- ヘッダーは「日送り」に専念する（2026-09-09 本人判断）。週送りは表の側へ、
          週レンジ表示と再読み込み ↻ は廃止。PC 専用（SP はペイン内の #sp-head を使う） -->
     <span class="weeknav headdaynav">
@@ -1399,7 +1404,7 @@
     <span class="spacer"></span>
     <nav class="tabbar" role="tablist" id="tabs">
       <button role="tab" data-mode="week"    data-icon="week"    aria-selected="true"  aria-controls="tab-week"><span class="tl">Main</span></button>
-      <button role="tab" data-mode="today"   data-icon="tick"    aria-selected="false" aria-controls="tab-today"><span class="tl">Today</span></button>
+      <button role="tab" data-mode="today"   data-icon="tick"    aria-selected="false" aria-controls="tab-today"><span class="tl">Setup</span></button>
       <button role="tab" data-mode="task"    data-icon="planner" aria-selected="false" aria-controls="tab-task"><span class="tl">Tasks</span></button>
       <button role="tab" data-mode="month"   data-icon="month"   aria-selected="false" aria-controls="tab-month"><span class="tl">Month</span></button>
       <button role="tab" data-mode="project" data-icon="project" aria-selected="false" aria-controls="tab-project"><span class="tl">Projects</span></button>
@@ -1483,7 +1488,11 @@
                 </span>
               </div>
               <div class="kindfilter" id="kindfilter-pc">
-                <label class="kf-item"><input type="checkbox" data-kind="work" checked><i class="kf-dot" data-color="work"></i>仕事</label>
+                <label class="kf-item"><input type="checkbox" data-kind="work" checked><i class="kf-dot" data-color="work"></i>学校</label>
+                <label class="kf-item"><input type="checkbox" data-kind="rika" checked><i class="kf-dot" data-color="work"></i>理科</label>
+                <label class="kf-item"><input type="checkbox" data-kind="dotoku" checked><i class="kf-dot" data-color="work"></i>道徳</label>
+                <label class="kf-item"><input type="checkbox" data-kind="gakkatsu" checked><i class="kf-dot" data-color="work"></i>学活</label>
+                <label class="kf-item"><input type="checkbox" data-kind="sogo" checked><i class="kf-dot" data-color="work"></i>総合</label>
                 <label class="kf-item"><input type="checkbox" data-kind="shinro" checked><i class="kf-dot" data-color="roster"></i>進路</label>
                 <label class="kf-item"><input type="checkbox" data-kind="private"><i class="kf-dot" data-color="private"></i>プライベート</label>
                 <label class="kf-item"><input type="checkbox" data-kind="bukatsu" checked><i class="kf-dot" data-color="roster"></i>部活</label>
@@ -1562,7 +1571,11 @@
           </span>
         </div>
         <div class="kindfilter" id="kindfilter-sp">
-          <label class="kf-item"><input type="checkbox" data-kind="work" checked><i class="kf-dot" data-color="work"></i>仕事</label>
+          <label class="kf-item"><input type="checkbox" data-kind="work" checked><i class="kf-dot" data-color="work"></i>学校</label>
+          <label class="kf-item"><input type="checkbox" data-kind="rika" checked><i class="kf-dot" data-color="work"></i>理科</label>
+          <label class="kf-item"><input type="checkbox" data-kind="dotoku" checked><i class="kf-dot" data-color="work"></i>道徳</label>
+          <label class="kf-item"><input type="checkbox" data-kind="gakkatsu" checked><i class="kf-dot" data-color="work"></i>学活</label>
+          <label class="kf-item"><input type="checkbox" data-kind="sogo" checked><i class="kf-dot" data-color="work"></i>総合</label>
           <label class="kf-item"><input type="checkbox" data-kind="shinro" checked><i class="kf-dot" data-color="roster"></i>進路</label>
           <label class="kf-item"><input type="checkbox" data-kind="private"><i class="kf-dot" data-color="private"></i>プライベート</label>
           <label class="kf-item"><input type="checkbox" data-kind="bukatsu" checked><i class="kf-dot" data-color="roster"></i>部活</label>
@@ -2299,12 +2312,21 @@ function classify(rec) {
    classify() はレコード→行き先（校時／行事バンド／放課後バンド）を決める純関数のままにし、
    区分フィルタは呼び出し側で「表示する schedule 配列」を絞るだけにする（classify は触らない）。
    ========================================================================== */
+/* 2026-09-29: 「仕事」を 学校（行事・出張・会議など）／理科／道徳／学活／総合 に分けた。
+   教科はナギレンダーの `種別`（select）が正。まだ空の行が多いので、空なら名前の頭
+   （「理科【2年】④」「道徳【3年】③」等）で補う。キー 'work' は「学校」のまま流用（保存済みの設定を生かす） */
+var SUBJECT_KINDS = { '理科': 'rika', '道徳': 'dotoku', '学活': 'gakkatsu', '総合': 'sogo' };
+function subjectOf(rec) {
+  if (rec && rec.shubetsu && SUBJECT_KINDS[rec.shubetsu]) return SUBJECT_KINDS[rec.shubetsu];
+  var m = String((rec && rec.name) || '').match(/^(理科|道徳|学活|総合)/);
+  return m ? SUBJECT_KINDS[m[1]] : null;
+}
 function kindOf(rec) {
   var labels = (rec && rec.periodLabels) || [];
   if (labels.indexOf('private') >= 0) return 'private';
   if (labels.indexOf('部活') >= 0) return 'bukatsu';
   if (labels.indexOf('進路') >= 0) return 'shinro';
-  return 'work';
+  return subjectOf(rec) || 'work';
 }
 /* state.kindFilter で ON になっている区分だけを残す。呼ぶ側は元の schedule 配列を書き換えない */
 function visibleSchedule(schedule) {
@@ -2313,7 +2335,7 @@ function visibleSchedule(schedule) {
 }
 function allKindsOff() {
   var f = state.kindFilter;
-  return !(f.work || f.shinro || f.private || f.bukatsu);
+  return !KIND_FILTER_DEFS.some(function (d) { return f[d.key]; });
 }
 /* 進路の学校別色（3-3）。名前の接頭辞（東高｜/明誠｜/県立｜）で判定。
    PROJECT リレーションでも引けるが getMonth が relationTitles を解決していないため接頭辞にする。
@@ -2383,11 +2405,13 @@ var state = {
   /* 区分フィルタ（2026-09-18）。Main（Day・Week）と月タブで共有。既定は プライベートだけ OFF
      （Main は元々 private を常に隠していたので、既定のままなら見え方は変わらない） */
   kindFilter: (function () {
-    var def = { work: true, shinro: true, private: false, bukatsu: true };
+    var def = { work: true, rika: true, dotoku: true, gakkatsu: true, sogo: true,
+                shinro: true, private: false, bukatsu: true };
     try {
       var v = JSON.parse(localStorage.getItem('dc.kindFilter') || 'null');
       if (v && typeof v === 'object') {
-        return { work: !!v.work, shinro: !!v.shinro, private: !!v.private, bukatsu: !!v.bukatsu };
+        /* 保存に無いキー（2026-09-29 に増やした教科）は既定値で補う */
+        Object.keys(def).forEach(function (k) { if (k in v) def[k] = !!v[k]; });
       }
     } catch (e) {}
     return def;
@@ -2417,7 +2441,11 @@ function el(tag, cls, text) {
    ここは常にそれを描くだけ（チェックボックス側から state を書き換えるのは setKindFilter だけ）
    ========================================================================== */
 var KIND_FILTER_DEFS = [
-  { key: 'work',    label: '仕事',       color: 'work' },
+  { key: 'work',     label: '学校',       color: 'work' },
+  { key: 'rika',     label: '理科',       color: 'work' },
+  { key: 'dotoku',   label: '道徳',       color: 'work' },
+  { key: 'gakkatsu', label: '学活',       color: 'work' },
+  { key: 'sogo',     label: '総合',       color: 'work' },
   { key: 'shinro',  label: '進路',       color: 'roster' },
   { key: 'private', label: 'プライベート', color: 'private' },
   { key: 'bukatsu', label: '部活',       color: 'roster' }
@@ -3213,7 +3241,14 @@ function lessonCard(rec, run) {
   /* カードに出すのは概要だけ（2026-09-09 本人要望で 詳細メモへのフォールバックを廃止）。
      詳細メモ・フィードバックはツールチップでのみ見せる */
   var subTxt = [(rec.place || []).join('・'), rec.summary].filter(Boolean).join(' — ');
-  if (subTxt) c.appendChild(el('div', 'sub', subTxt));
+  if (subTxt) {
+    /* 場所と概要を別 span にしておく（Week の狭い箱では CSS で場所だけ隠して概要を残す） */
+    var sub = el('div', 'sub');
+    var pl = (rec.place || []).join('・');
+    if (pl) sub.appendChild(el('span', 'pl', pl + (rec.summary ? ' — ' : '')));
+    if (rec.summary) { sub.appendChild(el('span', 'sm', rec.summary)); c.classList.add('has-sum'); }
+    c.appendChild(sub);
+  }
   var tip = [rec.name, subTxt,
              rec.memo || '',
              rec.feedback ? '振り返り: ' + rec.feedback : ''].filter(Boolean).join('\n');

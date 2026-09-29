@@ -288,6 +288,7 @@ function mapLesson_(pg) {
     memo: propText_(p['詳細メモ']),
     feedback: propText_(p['フィードバック']),
     excluded: propCheckbox_(p['関係なし']),
+    shubetsu: propSelect_(p['種別']),   /* 理科／道徳／学活／総合… 区分フィルタの教科判定に使う（2026-09-29） */
     relations: relIds_(p)
   };
 }

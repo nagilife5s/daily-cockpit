@@ -29,7 +29,7 @@
     var base = lsGet('dc.apiBase') || API_BASE;
     return fetch(base + '/api/' + fn, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Cockpit-Key': getKey(retried) },
+      headers: { 'Content-Type': 'application/json', 'X-Cockpit-Key': encodeURIComponent(getKey(retried))  /* 日本語の合言葉でも送れるように */ },
       body: JSON.stringify({ args: args })
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (js) {

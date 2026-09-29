@@ -103,7 +103,9 @@ export default {
     if (!env.COCKPIT_KEY || !env.NOTION_TOKEN) {
       return json_({ error: 'Worker の設定が未完了です（NOTION_TOKEN / COCKPIT_KEY）' }, 500, cors);
     }
-    if (!safeEqual_(request.headers.get('X-Cockpit-Key') || '', env.COCKPIT_KEY)) {
+    let key = request.headers.get('X-Cockpit-Key') || '';
+    try { key = decodeURIComponent(key); } catch (e) {}   /* 画面側は encodeURIComponent して送る（日本語の合言葉対策） */
+    if (!safeEqual_(key, env.COCKPIT_KEY)) {
       return json_({ error: 'unauthorized', code: 'unauthorized' }, 401, cors);
     }
 

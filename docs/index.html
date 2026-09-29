@@ -1072,6 +1072,12 @@
   .tdy-tbl tr.sum td { font-weight: 700; border-top: 2px solid var(--line); }
   .tdy-tbl .st { font-size: var(--fs-xs); color: var(--ink-3); }
   .tdy-tbl .st.done { color: var(--c-events); }
+  /* 勤務の表（2026-09-29）。見出し列の幅を固定して、どの行も同じ位置から読めるようにする */
+  .tdy-kv { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .tdy-kv th { width: 6.5em; padding-top: 9px; font-size: var(--fs-sm); color: var(--ink-2); }
+  .tdy-kv .kv-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+  .tdy-kv .none { color: var(--ink-3); }
+  .tdy-taskseg { margin-bottom: 10px; }
 
   .tdy-club { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .tdy-club select, .tdy-club input[type="time"] {
@@ -2282,7 +2288,10 @@ function emptyWeek(weekStart) {
    ========================================================================== */
 function classify(rec) {
   var labels = rec.periodLabels || [];
-  if (labels.indexOf('private') >= 0) return { hidden: true, runs: [], events: [], after: [] };
+  /* private は区分フィルタの「プライベート」がオフのときだけ隠す（2026-09-29 修正）。
+     以前は常に隠していたので、チェックを入れても Day/Week の時間軸に出なかった（9/28 17:00 歯医者） */
+  var isPrivate = labels.indexOf('private') >= 0;
+  if (isPrivate && !(state.kindFilter && state.kindFilter.private)) return { hidden: true, runs: [], events: [], after: [] };
 
   var periods = [];
   var events = [], after = [];
@@ -2302,6 +2311,7 @@ function classify(rec) {
     if (last && last.to === p - 1) last.to = p;
     else runs.push({ from: p, to: p });
   });
+  if (isPrivate) events.unshift('private');                 /* 金色の帯・箱にする */
   return { hidden: false, runs: runs, events: events, after: after };
 }
 
@@ -2372,7 +2382,8 @@ function afterColorFor(rec, key) {
    ========================================================================== */
 var state = {
   mode: 'week',
-  taskView: 'today',   /* タスクタブ内のビュー: today | adjust | all */
+  taskView: 'today',
+  setupTaskView: 'adjust',   /* Setup の中のタスク欄のビュー（2026-09-29）。朝は調整から入る */   /* タスクタブ内のビュー: today | adjust | all */
   /* Today タブ内のビュー: setup（朝）| close（夜）。タブに入るたび時刻で既定を選び直す（2026-09-18） */
   todayView: 'setup',
   weekStart: null,
@@ -3502,7 +3513,9 @@ function setTaskDate(t, d) {
             function () { restoreTask(t, snap); });
 }
 function rerenderTasks() {
-  if ($('#shell').dataset.mode === 'task') renderTaskTab();
+  var mode = $('#shell').dataset.mode;
+  if (mode === 'task') renderTaskTab();
+  else if (mode === 'today') renderTodayTab();     /* Setup の中のタスク管理（2026-09-29） */
   else refresh();
 }
 
@@ -4099,19 +4112,31 @@ function renderTodaySetup(root, date, j, dd) {
     root.appendChild(w);
   }
 
-  /* 1. 勤務 */
+  /* 1. 勤務。2026-09-29: カードの幅がまちまちで読みにくかったので、見出し列をそろえた1本の表にした。
+     空の項目も「—」で出して、日によって並びが変わらないようにする */
   var s1 = tdySec('勤務', 'flag');
-  var g1 = el('div', 'tdy-grid');
-  var c1 = el('div', 'card wide');
-  c1.appendChild(el('h3', null, '出勤区分'));
-  c1.appendChild(shukkinChips(j, date, false));
-  if (j.kyukaKanri) c1.appendChild(el('p', null, j.kyukaKanri));
-  g1.appendChild(c1);
-  if (j.shucchou) g1.appendChild(tdyCard('出張', j.shucchou));
-  if (j.gyouji) { var cg = tdyCard('行事', j.gyouji); cg.classList.add('wide'); g1.appendChild(cg); }
-  if (j.nichoku) g1.appendChild(tdyCard('日直', j.nichoku));
-  if (j.renraku) { var cr = tdyCard('連絡', j.renraku); cr.classList.add('wide'); g1.appendChild(cr); }
-  s1.appendChild(g1);
+  var t1 = el('table', 'tdy-tbl tdy-kv');
+  var tb1 = el('tbody');
+  function kvRow(label, content) {
+    var tr = el('tr');
+    tr.appendChild(el('th', null, label));
+    var td = el('td');
+    if (typeof content === 'string' || content == null) {
+      td.appendChild(el('div', content ? 'kv-text' : 'none', content || '—'));
+    } else td.appendChild(content);
+    tr.appendChild(td);
+    tb1.appendChild(tr);
+  }
+  var sk = el('div');
+  sk.appendChild(shukkinChips(j, date, false));
+  if (j.kyukaKanri) sk.appendChild(el('div', 'st', j.kyukaKanri));
+  kvRow('出勤区分', sk);
+  kvRow('出張', j.shucchou);
+  kvRow('行事', j.gyouji);
+  kvRow('日直', j.nichoku);
+  kvRow('連絡', j.renraku);
+  t1.appendChild(tb1);
+  s1.appendChild(t1);
   root.appendChild(s1);
 
   /* 2. 今日の授業。概要が空のコマは目立たせる（朝に入れるのが本人の運用） */
@@ -4148,27 +4173,28 @@ function renderTodaySetup(root, date, j, dd) {
   }
   root.appendChild(s2);
 
-  /* 3. 今日のタスク */
-  var ts = tasksOf(date);
-  var undone = ts.filter(function (t) { return t.status !== 'Done'; });
+  /* 3. タスク（2026-09-29: Tasks タブの TODAY／タスク管理／すべて をここでも使えるようにした。
+     朝のセットアップでそのまま調整まで済ませるため。Tasks タブは当面そのまま残す） */
   var s3 = tdySec('タスク', 'planner');
-  var note = el('p', 'st', undone.length + ' 件 / 全 ' + ts.length + ' 件');
-  s3.appendChild(note);
-  if (undone.length) {
-    var t3 = el('table', 'tdy-tbl');
-    var tb3 = el('tbody');
-    undone.forEach(function (t) {
-      var tr = el('tr');
-      var td = el('td');
-      td.appendChild(el('div', null, t.name));
-      if (t.period) td.appendChild(el('div', 'st', t.period + '限'));
-      tr.appendChild(td);
-      tr.appendChild(el('td', 'n st', t.status === 'In Progress' ? '進行中' : (t.status === '中断' ? '中断' : '未着手')));
-      tb3.appendChild(tr);
+  var seg = el('div', 'seg tdy-taskseg');
+  seg.setAttribute('role', 'tablist');
+  [['today', 'TODAY'], ['adjust', 'タスク管理'], ['all', 'すべて']].forEach(function (pair) {
+    var b = el('button', null, pair[1]);
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(state.setupTaskView === pair[0]));
+    b.addEventListener('click', function () {
+      if (state.setupTaskView === pair[0]) return;
+      state.setupTaskView = pair[0];
+      withTransition(renderTodayTab);
     });
-    t3.appendChild(tb3);
-    s3.appendChild(t3);
-  }
+    seg.appendChild(b);
+  });
+  s3.appendChild(seg);
+  if (date !== todayStr()) s3.appendChild(el('p', 'st', '※ タスク欄は常に「今日」（' + mdw(todayStr()) + '）基準です'));
+  var tg = el('div', 'tdy-tasks');
+  buildTaskView(tg, state.setupTaskView);
+  s3.appendChild(tg);
   root.appendChild(s3);
 
   /* 4. リンク（Gmail・kintone 等はここから飛ぶ。登録は Notion のクイックリンク DB） */
@@ -4299,11 +4325,16 @@ function renderTaskTab() {
   });
   var root = $('#task-groups');
   root.textContent = '';
+  buildTaskView(root, state.taskView);
+}
+
+/* タスクの3ビュー（TODAY／タスク管理／すべて）を root に描く。Tasks タブと Setup の両方から使う（2026-09-29） */
+function buildTaskView(root, view) {
   var td = todayStr();
   if (state.loading) { root.appendChild(el('div', 'stateband', '読み込み中…')); return; }
   if (state.error) { root.appendChild(el('div', 'stateband', 'タスクを取得できませんでした。週タブの「再読み込み」を押してください')); return; }
 
-  if (state.taskView === 'today') {
+  if (view === 'today') {
     var od = overdueTasks();
     if (od.length) {
       var bulk = el('button', 'bulk', 'すべて今日へ');
@@ -4329,7 +4360,7 @@ function renderTaskTab() {
     var done = DUMMY_TASKS.filter(function (t) { return t.status === 'Done' && t.date === td; });
     if (done.length) root.appendChild(taskGroup('完了', done, null, {}));
 
-  } else if (state.taskView === 'adjust') {
+  } else if (view === 'adjust') {
     /* タスク管理（Notion の調整タブ相当）: TODAY と INBOX を並べる。
        INBOX ＝ 実施予定日が空の未完了（🗑ゴミ箱は出さない） */
     /* TODAY・INBOX とも種別ごとに分類して並べる（本人要望 2026-09-04） */

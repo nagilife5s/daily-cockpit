@@ -282,6 +282,8 @@ function mapLesson_(pg) {
     date: d.date,
     time: d.time,
     endTime,
+    /* 複数日の予定の最終日（2026-09-29。月タブで期間中の毎日に出す）。1日だけなら null */
+    endDate: (e && e.date > d.date) ? e.date : null,
     periodLabels: propMulti_(p['時限']),
     grade: propMulti_(p['学年'])[0] || null,
     place: propMulti_(p['場所']),

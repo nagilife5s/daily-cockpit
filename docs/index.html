@@ -696,13 +696,16 @@
     width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
     align-self: flex-start;
   }
+  /* 2026-09-29: 全文を折り返して見せる（以前は1行で切っていて何の予定か分からなかった） */
   .mc-chip {
-    font-size: 10px; line-height: 1.4; border-radius: 3px; padding: 0 4px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink);
+    font-size: 11.5px; line-height: 1.35; border-radius: 3px; padding: 1px 4px;
+    white-space: normal; overflow-wrap: anywhere; color: var(--ink);
     background: color-mix(in oklch, var(--k) 12%, var(--mixbase));
     border-left: 2px solid var(--k);
   }
   .mc-more { font-size: 9px; color: var(--ink-3); }
+  .mc-chip .mc-tm { font-size: .9em; color: var(--ink-3); font-variant-numeric: tabular-nums; margin-right: 3px; }
+  .mc-chip.mc-span { background: color-mix(in oklch, var(--k) 22%, var(--mixbase)); }
   /* スマホ月タブ: 色ドット＋件数、選択日は枠、下に展開リスト */
   .mc-dots { display: flex; flex-wrap: wrap; gap: 3px; }
   .mc-dots i, .mc-detail .row i { width: 7px; height: 7px; border-radius: 50%; background: var(--k, var(--ink-3)); flex: none; display: inline-block; }
@@ -742,8 +745,9 @@
   .mc-chip.mc-lesson[data-grade="とび"],
   .mc-chip.mc-lesson[data-grade="とびのこ"] { --k: var(--g-tobi); }
   @media (max-width: 700px) {
-    .mc-cell { min-height: 64px; padding: 2px 2px; }
-    .mc-chip { font-size: 8.5px; padding: 0 2px; }
+    .mc-cell { min-height: 64px; padding: 2px 1px; }
+    .mc-chip { font-size: 9.5px; padding: 0 2px; line-height: 1.25; }
+    .mc-chip .mc-tm { display: none; }
   }
 
   /* ---------- プロジェクトタブ ---------- */
@@ -1375,7 +1379,7 @@
 
     /* 文字サイズを屋外スマホ向けに底上げ（レビュー指摘） */
     :root { --fs: 15px; --fs-sm: 13.5px; --fs-xs: 11.5px; --fs-lg: 16px; }
-    .mc-chip { font-size: 10px; }
+    .mc-chip { font-size: 9.5px; }
     .mc-more, .day-row .pn small, .ph small { font-size: 10px; }
 
     /* タスク行は2段組: 1段目=⠿・チェック・名前 / 2段目=種別・プロジェクト・meta・操作 */
@@ -2340,13 +2344,21 @@ function kindOf(rec) {
   if (labels.indexOf('進路') >= 0) return 'shinro';
   return subjectOf(rec) || 'work';
 }
+/* localStorage に保存した区分フィルタを読む。保存に無いキーは def の値（var 巻き上げで state より先に呼べる） */
+function loadKindFilter(key, def) {
+  try {
+    var v = JSON.parse(localStorage.getItem(key) || 'null');
+    if (v && typeof v === 'object') Object.keys(def).forEach(function (k) { if (k in v) def[k] = !!v[k]; });
+  } catch (e) {}
+  return def;
+}
 /* state.kindFilter で ON になっている区分だけを残す。呼ぶ側は元の schedule 配列を書き換えない */
 function visibleSchedule(schedule) {
   var f = state.kindFilter;
   return (schedule || []).filter(function (rec) { return !!(f && f[kindOf(rec)]); });
 }
-function allKindsOff() {
-  var f = state.kindFilter;
+function allKindsOff(f) {
+  f = f || state.kindFilter;
   return !KIND_FILTER_DEFS.some(function (d) { return f[d.key]; });
 }
 /* 進路の学校別色（3-3）。名前の接頭辞（東高｜/明誠｜/県立｜）で判定。
@@ -2417,6 +2429,11 @@ var state = {
   schoolWideError: '',
   /* 区分フィルタ（2026-09-18）。Main（Day・Week）と月タブで共有。既定は プライベートだけ OFF
      （Main は元々 private を常に隠していたので、既定のままなら見え方は変わらない） */
+  /* 月タブ専用の区分フィルタ（2026-09-29 本人要望で Main と切り離した）。
+     月は行事の見通し用なので、既定は授業（理科・道徳・学活・総合）を OFF にする */
+  monthKindFilter: loadKindFilter('dc.monthKindFilter',
+    { work: true, rika: false, dotoku: false, gakkatsu: false, sogo: false,
+      shinro: true, private: false, bukatsu: true }),
   kindFilter: (function () {
     var def = { work: true, rika: true, dotoku: true, gakkatsu: true, sogo: true,
                 shinro: true, private: false, bukatsu: true };
@@ -2464,15 +2481,20 @@ var KIND_FILTER_DEFS = [
   { key: 'bukatsu', label: '部活',       color: 'roster' }
 ];
 /* 月タブ用: 毎回 DOM を作り直す。Main（PC/SP）は静的 HTML 側にあるので syncKindFilterUI で同期するだけ */
+/* 2026-09-29: 月タブは state.monthKindFilter を使う（Main とは連動させない） */
 function buildKindFilterRow() {
-  var wrap = el('div', 'kindfilter');
+  var wrap = el('div', 'kindfilter kf-month');
   KIND_FILTER_DEFS.forEach(function (def) {
     var label = el('label', 'kf-item');
     var cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.dataset.kind = def.key;
-    cb.checked = !!state.kindFilter[def.key];
-    cb.addEventListener('change', function () { setKindFilter(def.key, cb.checked); });
+    cb.checked = !!state.monthKindFilter[def.key];
+    cb.addEventListener('change', function () {
+      state.monthKindFilter[def.key] = cb.checked;
+      try { localStorage.setItem('dc.monthKindFilter', JSON.stringify(state.monthKindFilter)); } catch (e) {}
+      withTransition(renderMonthTab);
+    });
     var dot = el('i', 'kf-dot');
     dot.dataset.color = def.color;
     label.appendChild(cb);
@@ -2484,7 +2506,7 @@ function buildKindFilterRow() {
 }
 /* Main（PC/SP）・月タブのチェックボックスを state.kindFilter に合わせる */
 function syncKindFilterUI() {
-  $all('.kindfilter input[data-kind]').forEach(function (cb) {
+  $all('.kindfilter:not(.kf-month) input[data-kind]').forEach(function (cb) {
     cb.checked = !!state.kindFilter[cb.dataset.kind];
   });
 }
@@ -5262,7 +5284,7 @@ function renderMonthTab() {
   nav.appendChild(prev); nav.appendChild(label); nav.appendChild(next); nav.appendChild(thisM);
   nav.appendChild(el('span', 'mnote', '日付をクリックでその週へ'));
   root.appendChild(nav);
-  root.appendChild(buildKindFilterRow());   /* 区分フィルタ（2026-09-18）。Main と state を共有 */
+  root.appendChild(buildKindFilterRow());   /* 区分フィルタ（2026-09-29 から月タブ専用） */
 
   var events = state.months[ym];
   if (events === undefined) {           /* 未取得 → 取りに行く */
@@ -5291,31 +5313,49 @@ function renderMonthTab() {
   }
 
   /* 区分フィルタ（2026-09-18）。全部 OFF なら空カレンダーにせず、その旨を出して終わる */
-  if (allKindsOff()) {
+  var mf = state.monthKindFilter;
+  if (allKindsOff(mf)) {
     root.appendChild(el('div', 'stateband', '表示する区分が選ばれていません'));
     return;
   }
-  var visibleEvents = events.filter(function (rec) { return state.kindFilter[kindOf(rec)]; });
+  var visibleEvents = events.filter(function (rec) { return !rec.excluded && mf[kindOf(rec)]; });
 
   /* 日別に整理。月タブは【全部見せる】方針（本人要望 2026-09-01）:
      行事系・放課後系はバンド色、授業は学年色、private も金色で出す */
+  /* 2026-09-29: Googleカレンダーのように【全件を名前で】見せる。件数の上限は設けず、セルが縦に伸びる。
+     複数日の予定（教育相談の期間など）は期間中の毎日に出す */
   var byDay = {};
+  function pushChip(date, ch) { (byDay[date] = byDay[date] || { chips: [] }).chips.push(ch); }
   visibleEvents.forEach(function (rec) {
-    var d = byDay[rec.date] = byDay[rec.date] || { chips: [] };
+    var ch;
     if ((rec.periodLabels || []).indexOf('private') >= 0) {
-      d.chips.push({ name: rec.name, color: 'private', time: rec.time });
-      return;
+      ch = { name: rec.name, color: 'private', time: rec.time };
+    } else {
+      var c = classify(rec);
+      if (c.events.length || c.after.length) {
+        ch = { name: rec.name, color: colorFor(rec, c), time: rec.time };
+      } else if (c.runs.length) {
+        ch = { name: rec.name, lesson: true, grade: rec.grade, time: rec.time, firstP: c.runs[0].from,
+               periods: c.runs.map(function (r) { return r.from === r.to ? r.from + '校時' : r.from + '〜' + r.to + '校時'; }).join('・') };
+      } else {
+        ch = { name: rec.name, color: 'work', time: rec.time };   /* 時限が空の予定も落とさない */
+      }
     }
-    var c = classify(rec);
-    if (c.events.length || c.after.length) {
-      d.chips.push({ name: rec.name, color: colorFor(rec, c), time: rec.time });
-    } else if (c.runs.length) {
-      d.chips.push({ name: rec.name, lesson: true, grade: rec.grade, time: rec.time,
-                     periods: c.runs.map(function (r) { return r.from === r.to ? r.from + '校時' : r.from + '〜' + r.to + '校時'; }).join('・') });
-    }
+    var endD = rec.endDate && rec.endDate > rec.date ? rec.endDate : rec.date;
+    if (endD > rec.date) ch.span = true;
+    for (var d = rec.date, n = 0; d <= endD && n < 62; d = addDays(d, 1), n++) pushChip(d, ch);
+  });
+  /* 並び: 終日（期間・行事）→ 時刻順。授業は校時の標準時刻で並べる */
+  function chipKey(ch) {
+    if (ch.time) return hmToMin(ch.time);
+    if (ch.lesson && ch.firstP) return PERIOD_MIN[ch.firstP - 1];
+    return -1;
+  }
+  Object.keys(byDay).forEach(function (k) {
+    byDay[k].chips.sort(function (x, y) { return chipKey(x) - chipKey(y); });
   });
 
-  /* スマホはセルが狭いのでチップをやめ「色ドット＋件数」にし、タップで下にその日のリストを展開 */
+  /* スマホはタップで下にその日のリストを展開（セルの中も名前で出す） */
   var compact = window.matchMedia('(max-width: 700px)').matches;
 
   /* グリッド: 月曜始まり・6週分までで当月を覆う */
@@ -5343,28 +5383,8 @@ function renderMonthTab() {
       cell.setAttribute('aria-label', mdw2(date) + (byDay[date] ? ' 予定' + byDay[date].chips.length + '件' : ''));
       if (compact && state.monthSel === date) cell.classList.add('sel');
       var d = byDay[date];
-      if (d) {
-        if (compact) {
-          var dots = el('div', 'mc-dots');
-          d.chips.slice(0, 8).forEach(function (ch) {
-            var i = el('i');
-            if (ch.lesson) { i.className = 'mc-lesson'; i.dataset.grade = ch.grade || ''; }
-            else i.dataset.color = ch.color;
-            dots.appendChild(i);
-          });
-          cell.appendChild(dots);
-          cell.appendChild(el('div', 'mc-cnt', d.chips.length + '件'));
-        } else {
-          d.chips.slice(0, 10).forEach(function (ch) {
-            var c = el('div', 'mc-chip' + (ch.lesson ? ' mc-lesson' : ''), ch.name);
-            if (ch.lesson) c.dataset.grade = ch.grade || '';
-            else c.dataset.color = ch.color;
-            c.title = ch.name;
-            cell.appendChild(c);
-          });
-          if (d.chips.length > 10) cell.appendChild(el('div', 'mc-more', '＋' + (d.chips.length - 10) + '件'));
-        }
-      }
+      /* スマホも点ではなく名前で出す（2026-09-29）。タップで下に一覧も開く */
+      if (d) d.chips.forEach(function (ch) { cell.appendChild(monthChip(ch)); });
       (function (dd) {
         cell.addEventListener('click', function () {
           if (compact) { state.monthSel = dd; renderMonthTab(); return; }   /* スマホは下に展開 */
@@ -5376,7 +5396,7 @@ function renderMonthTab() {
     cur = addDays(cur, 7);
   }
   root.appendChild(grid);
-  if (state.kindFilter.shinro) root.appendChild(buildSchoolLegend());   /* 進路チェック中だけ学校色の凡例 */
+  if (mf.shinro) root.appendChild(buildSchoolLegend());   /* 進路チェック中だけ学校色の凡例 */
 
   /* スマホ: 選んだ日の予定リスト */
   if (compact && state.monthSel) {
@@ -5405,6 +5425,16 @@ function renderMonthTab() {
   }
 }
 /* 土日も含めた曜日付き表示（月タブ用） */
+/* 月セルの予定1件。時刻があれば頭に付ける。名前は折り返して全文見せる */
+function monthChip(ch) {
+  var c = el('div', 'mc-chip' + (ch.lesson ? ' mc-lesson' : '') + (ch.span ? ' mc-span' : ''));
+  if (ch.lesson) c.dataset.grade = ch.grade || '';
+  else c.dataset.color = ch.color;
+  if (ch.time) c.appendChild(el('span', 'mc-tm', ch.time));
+  c.appendChild(document.createTextNode(ch.name));
+  c.title = (ch.time ? ch.time + ' ' : (ch.periods ? ch.periods + ' ' : '')) + ch.name;
+  return c;
+}
 function mdw2(ymd) { return mdw(ymd); }   /* 旧・土日対応版。mdw が7曜に対応したので同じ（2026-09-18） */
 function jumpToWeek(dd) {
   state.mode = 'week';

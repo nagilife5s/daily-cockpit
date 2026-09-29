@@ -123,6 +123,7 @@ export default {
       const result = await api[fn](...args);
       return json_({ result: result === undefined ? null : result }, 200, cors);
     } catch (e) {
+      console.error('[' + fn + '] ' + String((e && e.message) || e));   /* wrangler tail で原因を追えるように */
       return json_({ error: String((e && e.message) || e).slice(0, 1000) }, 500, cors);
     }
   }

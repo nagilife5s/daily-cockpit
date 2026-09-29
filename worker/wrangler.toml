@@ -1,0 +1,12 @@
+name = "daily-cockpit-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# 画面の置き場所（GitHub Pages の URL が決まったら書き換える。カンマ区切りで複数可）
+ALLOWED_ORIGIN = "https://nagilife5s.github.io"
+KOKOROE = ""
+
+# NOTION_TOKEN と COCKPIT_KEY は Secret（ここには書かない）:
+#   npx wrangler secret put NOTION_TOKEN
+#   npx wrangler secret put COCKPIT_KEY

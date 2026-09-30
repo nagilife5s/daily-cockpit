@@ -3871,7 +3871,9 @@ document.addEventListener('pointerdown', function (e) {
     function finalize() {
       siblings().forEach(function (r) { r.style.transition = ''; r.style.transform = ''; });
       var changed = [];
-      Array.prototype.forEach.call(list.querySelectorAll('.titem'), function (r, idx) {
+      /* タスク管理の TODAY は種別ごとに .tasklist が分かれるので、列全体で通し番号にする */
+      var scope = list.closest('.adjust-cols > div') || list;
+      Array.prototype.forEach.call(scope.querySelectorAll('.titem'), function (r, idx) {
         var t = DUMMY_TASKS.find(function (x) { return x.id === r.dataset.tid; });
         if (t && t.order !== idx) { t.order = idx; changed.push({ id: t.id, order: idx }); }
       });
@@ -3998,7 +4000,7 @@ function kindColumn(title, icon, items, itemOpts, emptyText) {
    設計: daily-cockpit/設計メモ｜朝夜クローズ.md
 
    ねらいは「1日を開いて閉じる」を1か所に寄せること。
-     Setup（朝）… 出勤区分・予定・タスクを【確認するだけ】。押すのは最後の1回
+     Setup（朝）… 出勤区分（違っていればその場で直せる）・予定・タスクを確認する。最後に完了を押す
      Close（夜）… 実績を見ながら出勤区分を確定し、休日に部活へ出た日はここで記録する
 
    ★このタブが書くのは Daily Journaling all の
@@ -4079,7 +4081,7 @@ function tdyCard(label, text, noneText) {
   return c;
 }
 
-/* 出勤区分。Setup は確認だけなので押せない。Close で本人が確定する */
+/* 出勤区分。editable=true で押して切り替えられる（Setup・Close の両方で使う） */
 function shukkinChips(j, date, editable) {
   var wrap = el('div', 'tdy-chips');
   var cur = (j.shukkin || []).slice();
@@ -4151,9 +4153,11 @@ function renderTodaySetup(root, date, j, dd) {
     tr.appendChild(td);
     tb1.appendChild(tr);
   }
+  /* 2026-10-01: セットアップちゃんの判定が違う日があるので、朝のうちに直せるようにした（Close と同じチップ） */
   var sk = el('div');
-  sk.appendChild(shukkinChips(j, date, false));
+  sk.appendChild(shukkinChips(j, date, true));
   if (j.kyukaKanri) sk.appendChild(el('div', 'st', j.kyukaKanri));
+  sk.appendChild(el('div', 'st', '全日の休暇は「出勤」を外す。半日・時間休は「出勤」と両方入れる。'));
   kvRow('出勤区分', sk);
   kvRow('出張', j.shucchou);
   kvRow('行事', j.gyouji);
@@ -4390,7 +4394,7 @@ function buildTaskView(root, view) {
     /* TODAY・INBOX とも種別ごとに分類して並べる（本人要望 2026-09-04） */
     var cols = el('div', 'adjust-cols');
     var open2 = DUMMY_TASKS.filter(function (t) { return isOpen(t) && t.date === td; });
-    cols.appendChild(kindColumn('TODAY', 'planner', open2, {}, 'まだ何も入っていません'));
+    cols.appendChild(kindColumn('TODAY', 'planner', open2, { sortable: true }, 'まだ何も入っていません'));   /* 種別グループ内で並び替え可（2026-10-01） */
     var inbox = DUMMY_TASKS.filter(function (t) { return isOpen(t) && !t.date && t.kind !== '🗑ゴミ箱'; });
     cols.appendChild(kindColumn('INBOX', 'inbox', inbox, { assign: true }, 'INBOX は空です'));
     root.appendChild(cols);

@@ -4201,11 +4201,12 @@ function renderTodaySetup(root, date, j, dd) {
   }
   root.appendChild(s2);
 
-  /* 2.5 タスクに取りかかる前の確認先（2026-10-01）。Gmail の前日分処理 → コドモン（保育園日記）の確認 */
-  var sm = tdySec('メール・コドモン', 'letter');
+  /* 2.5 タスクに取りかかる前の確認先（2026-10-01）。Gmail の前日分処理 → コドモン（保育園日記）の確認 → kintone の受領文書の処理 */
+  var sm = tdySec('メール・コドモン・受領文書', 'letter');
   var mw = el('div', 'tdy-chips');
   [['Gmail を開く', 'https://mail.google.com/'],
-   ['コドモン（保育園日記）を開く', 'https://app.notion.com/p/05267eaa071e42daa262b440c626d7ef']].forEach(function (pair) {
+   ['コドモン（保育園日記）を開く', 'https://app.notion.com/p/05267eaa071e42daa262b440c626d7ef'],
+   ['受領文書（kintone）を開く', 'https://town-yoshika.cybozu.com/k/380/?view=5520215']].forEach(function (pair) {
     var a = el('a', 'tdy-chip', pair[0]);
     a.href = pair[1]; a.target = '_blank'; a.rel = 'noopener';
     mw.appendChild(a);

@@ -4201,6 +4201,18 @@ function renderTodaySetup(root, date, j, dd) {
   }
   root.appendChild(s2);
 
+  /* 2.5 タスクに取りかかる前の確認先（2026-10-01）。Gmail の前日分処理 → コドモン（保育園日記）の確認 */
+  var sm = tdySec('メール・コドモン', 'letter');
+  var mw = el('div', 'tdy-chips');
+  [['Gmail を開く', 'https://mail.google.com/'],
+   ['コドモン（保育園日記）を開く', 'https://app.notion.com/p/05267eaa071e42daa262b440c626d7ef']].forEach(function (pair) {
+    var a = el('a', 'tdy-chip', pair[0]);
+    a.href = pair[1]; a.target = '_blank'; a.rel = 'noopener';
+    mw.appendChild(a);
+  });
+  sm.appendChild(mw);
+  root.appendChild(sm);
+
   /* 3. タスク（2026-09-29: Tasks タブの TODAY／タスク管理／すべて をここでも使えるようにした。
      朝のセットアップでそのまま調整まで済ませるため。Tasks タブは当面そのまま残す） */
   var s3 = tdySec('タスク', 'planner');

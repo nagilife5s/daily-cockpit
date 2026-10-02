@@ -31,7 +31,8 @@ const NOTION_DS = {
   project: { ds: '99a09b07-4c76-40ad-979e-afc575f48e5d', db: 'fd510c02-94e0-4a6d-bd0a-aadb8ebc97d6' }, /* DB_PROJECT */
   docs:    { ds: '0068f743-83db-4ad5-8053-03471d41f74d', db: 'b7ce3056-a78e-4fe1-a86e-47f0dcb44580' }, /* 書類DB */
   links:   { ds: 'e119857b-6daf-42e5-b9b9-4fb48cf37544', db: 'de46b30d-ba46-422b-b78e-fb1aa27a6623' }, /* クイックリンク */
-  schoolwide: { ds: 'f1ce0ada-3655-40ea-94df-6a3ef1c769bb', db: 'ea362d48-3d91-43b4-a4c4-ea19d70cd592' } /* 校内コマDB */
+  schoolwide: { ds: 'f1ce0ada-3655-40ea-94df-6a3ef1c769bb', db: 'ea362d48-3d91-43b4-a4c4-ea19d70cd592' }, /* 校内コマDB */
+  sciunit: { ds: 'ec95f0af-f9db-4c18-a16d-fa278b567ed5', db: '5bc1c070-bf59-4e8a-8526-522e9372df8d' }  /* R8 理科単元計画 */
 };
 
 /* 標準時刻。実施予定日の時刻がこの6値に一致したときだけ「校時割り当て」とみなす */
@@ -63,7 +64,7 @@ const BODY_MAX_BLOCKS = 200;
 
 /* 画面から呼んでよい関数（これ以外は 404） */
 const PUBLIC_FNS = [
-  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getProjects', 'getProjectBody',
+  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'updateUnitPlan', 'getProjects', 'getProjectBody',
   'updateLesson', 'createLesson', 'deleteLesson',
   'getDocs', 'searchDocs', 'updateDoc',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
@@ -202,6 +203,13 @@ function jstIso_(date, hm) {
   const a = String(hm).split(':');
   return date + 'T' + ('0' + a[0]).slice(-2) + ':' + ('0' + a[1]).slice(-2) + ':00+09:00';
 }
+
+/* 全角数字を半角へ。単元計画DBの学年は「１年」（全角）、ナギレンダーは「1年」（半角） */
+function normGrade_(g) {
+  return g ? String(g).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)) : null;
+}
+function propFiles_(p) { return p && p.files ? p.files.map(f => f.name || '') .filter(Boolean) : []; }
+function todayJst_() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
 
 function plain_(rt) { return (rt || []).map(x => x.plain_text || '').join(''); }
 function propTitle_(p)    { return p && p.title ? plain_(p.title) : ''; }
@@ -466,7 +474,7 @@ function createApi(env) {
 
   async function queryOnce_(dbKey, body) {
     const d = NOTION_DS[dbKey];
-    const label = { nagi: 'ナギレンダー', task: 'DB_TASK', journal: 'Daily Journaling all', project: 'DB_PROJECT', docs: '書類DB', links: 'クイックリンク', schoolwide: '校内コマDB' }[dbKey] || dbKey;
+    const label = { nagi: 'ナギレンダー', task: 'DB_TASK', journal: 'Daily Journaling all', project: 'DB_PROJECT', docs: '書類DB', links: 'クイックリンク', schoolwide: '校内コマDB', sciunit: 'R8 理科単元計画' }[dbKey] || dbKey;
     const hint = '（404 なら Notion 側でこの DB にインテグレーションを接続し忘れている可能性が高い）';
     if (apiMode !== 'db') {
       const r = await request_('https://api.notion.com/v1/data_sources/' + d.ds + '/query', 'post', body, '2025-09-03');
@@ -763,6 +771,108 @@ function createApi(env) {
         sorts: [{ property: '日付', direction: 'ascending' }]
       })).map(mapSchoolLesson_).filter(r => r && r.date);
       return { weekStart, items, relationTitles: await relationTitles_(collectRelIds_(items)) };
+    },
+
+    /* 理科タブ（閲覧のみ）。単元計画DBの全行＋ナギレンダーの紐づき（実施日）＋「次の理科授業」 */
+    async getScienceUnits() {
+      await warmApiMode_();
+      const today = todayJst_();
+      const [unitRows, lessonRows, nextRows] = await Promise.all([
+        queryAll_('sciunit', {}),
+        queryAll_('nagi', { filter: { property: '理科単元計画', relation: { is_not_empty: true } } }),
+        queryAll_('nagi', { filter: { and: [
+          { property: '種別', select: { equals: '理科' } },
+          { property: '日付', date: { on_or_after: today } }
+        ] }, sorts: [{ property: '日付', direction: 'ascending' }] }, 1).catch(() => [])
+      ]);
+
+      const lessonsByUnit = {};
+      const linked = [];
+      lessonRows.map(mapLesson_).filter(Boolean).forEach(l => {
+        l.relations.filter(r => r.kind === '単元計画').forEach(r => {
+          const k = r.id.replace(/-/g, '');
+          (lessonsByUnit[k] = lessonsByUnit[k] || []).push({ id: l.id, date: l.date, time: l.time, periodLabels: l.periodLabels });
+          linked.push({ date: l.date, unitId: r.id });
+        });
+      });
+
+      const units = unitRows.map(pg => {
+        const p = pg.properties || {};
+        const lessons = (lessonsByUnit[pg.id.replace(/-/g, '')] || []).sort((a, b) => a.date < b.date ? -1 : 1);
+        return {
+          id: pg.id,
+          url: pg.url || null,
+          name: propTitle_(p['授業名']),
+          grade: normGrade_(propSelect_(p['学年'])),
+          unitNo: propSelect_(p['単元No']),
+          unitName: propSelect_(p['単元名']) || '(単元名なし)',
+          hour: propNumber_(p['時数']),
+          area: propSelect_(p['領域']),
+          view: propSelect_(p['見方']),
+          goal: noContent_(propText_(p['目標'])),
+          flow: noContent_(propText_(p['流れ'])),
+          tools: noContent_(propText_(p['道具'])),
+          forms: propMulti_(p['授業形態']),
+          status: propStatus_(p['status']) || 'not',
+          feedback: propText_(p['フィードバック']),
+          driveUrl: p[' Google Drive'] && safeHref_(p[' Google Drive'].url) ? p[' Google Drive'].url : null,
+          counts: {
+            kahoot: propRelation_(p['kahoot']).length,
+            recipe: propRelation_(p['実験レシピ']).length,
+            artifact: propRelation_(p['理科アーティファクト']).length,
+            worksheet: propFiles_(p['ワークシート']).length
+          },
+          lessons
+        };
+      });
+
+      linked.sort((a, b) => a.date < b.date ? -1 : 1);
+      const nextLinked = linked.find(x => x.date >= today) || null;
+      const nextLesson = nextRows.length ? mapLesson_(nextRows[0]) : null;
+      return {
+        units, today,
+        next: {
+          date: nextLinked ? nextLinked.date : (nextLesson ? nextLesson.date : null),
+          unitId: nextLinked ? nextLinked.unitId : null,
+          grade: normGrade_(nextLesson ? nextLesson.grade : null)
+        }
+      };
+    },
+
+    /* 本時を展開したときだけ呼ぶ。関連ページ名と Notion リンク、ワークシートのファイル名（URL は短命なので返さない） */
+    async getScienceUnitDetail(pageId) {
+      const pg = await fetchPageOf_(pageId, 'sciunit', '理科単元計画のページ');
+      const p = pg.properties || {};
+      const groups = { kahoot: 'kahoot', recipes: '実験レシピ', artifacts: '理科アーティファクト' };
+      const idsOf = {};
+      let all = [];
+      Object.keys(groups).forEach(k => { idsOf[k] = propRelation_(p[groups[k]]); all = all.concat(idsOf[k]); });
+      const titles = await relationTitles_(all);
+      const out = { url: pg.url || null, worksheets: propFiles_(p['ワークシート']) };
+      Object.keys(groups).forEach(k => {
+        out[k] = idsOf[k].map(id => titles[id] ? { title: titles[id].title, url: titles[id].url } : { title: '(取得できません。DBへの接続を確認)', url: null });
+      });
+      return out;
+    },
+
+    /* 理科単元計画の書き込み。書いてよいのは status（not / Done）と フィードバック だけ（ホワイトリスト）。
+       単元計画DBのページでなければ拒否する */
+    async updateUnitPlan(pageId, patch) {
+      assertId_(pageId);
+      patch = patch || {};
+      const props = {};
+      if ('status' in patch) {
+        if (patch.status !== 'not' && patch.status !== 'Done') throw new Error('status は not / Done のどちらかです');
+        props['status'] = { status: { name: patch.status } };
+      }
+      if ('feedback' in patch) {
+        const t = String(patch.feedback == null ? '' : patch.feedback).slice(0, 2000);
+        props['フィードバック'] = { rich_text: t ? [{ type: 'text', text: { content: t } }] : [] };
+      }
+      if (!Object.keys(props).length) return { ok: true };
+      await fetchPageOf_(pageId, 'sciunit', '理科単元計画のページ');
+      await patchPage_(pageId, { properties: props }, '単元計画の保存に失敗しました');
+      return { ok: true };
     },
 
     async getProjects() {

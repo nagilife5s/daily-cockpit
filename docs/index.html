@@ -253,7 +253,7 @@
   .tab { display: none; }
   #shell[data-mode="week"]    #tab-week,
   #shell[data-mode="today"]   #tab-today,
-  #shell[data-mode="task"]    #tab-task,
+  #shell[data-mode="science"] #tab-science,
   #shell[data-mode="month"]   #tab-month,
   #shell[data-mode="project"] #tab-project,
   #shell[data-mode="often"]   #tab-often { display: block; }
@@ -864,6 +864,38 @@
               background: var(--paper); color: var(--ink-2); }
   .doc-empty { color: var(--ink-3); font-size: var(--fs-sm); padding: 4px 0 14px; }
 
+  /* Science タブ（2026-10-02）。本時の行は .doc-item を流用 */
+  .sci-ghead {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 9px 12px; margin-bottom: 6px;
+  }
+  .sci-ghead .no { flex: none; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sci-ghead .tn { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sci-ghead .area { flex: none; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 6px; background: var(--paper); color: var(--ink-2); }
+  .sci-ghead .prog { flex: none; font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .sci-ghead .caret { flex: none; color: var(--ink-3); font-size: 10px; }
+  .sci-bar { flex: none; width: 56px; height: 6px; border-radius: 3px; overflow: hidden;
+             background: color-mix(in oklch, var(--ink) 10%, var(--mixbase)); }
+  .sci-bar i { display: block; height: 100%; background: var(--c-events); }
+  .sci-body { margin: 0 0 12px 10px; }
+  .sci-link {
+    display: inline-block; margin-top: 3px; border: 1px solid color-mix(in oklch, var(--c-events) 40%, var(--mixbase));
+    background: var(--paper); color: var(--c-events); font-size: 10px; font-weight: 600;
+    border-radius: 999px; padding: 1px 8px; cursor: pointer; line-height: 1.5;
+  }
+  .sci-lesson .doc-head .hr { flex: none; width: 1.6em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sci-lesson.done .doc-head .tn { color: var(--ink-3); }
+  .sci-badge { flex: none; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 6px; background: var(--paper); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .sci-badge.date { color: var(--c-events); }
+  .sci-badge.undated { color: var(--ink-3); font-weight: 500; }
+  .sci-badge.warn { color: var(--c-leave); }
+  .sci-badge.ok { color: var(--task); }
+  .sci-badges { display: flex; gap: 4px; flex: none; }
+  .sci-rel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .sci-rel a { color: var(--c-events); text-decoration: none; overflow-wrap: anywhere; }
+  .sci-rel .na { color: var(--ink-3); }
+
   /* 空きコマ割り当てピッカー（空きスロットのクリックで開く） */
   .taskpicker {
     position: fixed; z-index: 100;
@@ -1417,7 +1449,7 @@
     <nav class="tabbar" role="tablist" id="tabs">
       <button role="tab" data-mode="week"    data-icon="week"    aria-selected="true"  aria-controls="tab-week"><span class="tl">Main</span></button>
       <button role="tab" data-mode="today"   data-icon="tick"    aria-selected="false" aria-controls="tab-today"><span class="tl">Setup</span></button>
-      <button role="tab" data-mode="task"    data-icon="planner" aria-selected="false" aria-controls="tab-task"><span class="tl">Tasks</span></button>
+      <button role="tab" data-mode="science" data-icon="beaker"  aria-selected="false" aria-controls="tab-science"><span class="tl">Science</span></button>
       <button role="tab" data-mode="month"   data-icon="month"   aria-selected="false" aria-controls="tab-month"><span class="tl">Month</span></button>
       <button role="tab" data-mode="project" data-icon="project" aria-selected="false" aria-controls="tab-project"><span class="tl">Projects</span></button>
       <button role="tab" data-mode="often"   data-icon="often"   aria-selected="false" aria-controls="tab-often"><span class="tl">Docs</span></button>
@@ -1626,7 +1658,6 @@
       </div>
     </div>
 
-    <!-- ===================== タスクタブ（Notion GTD セクションの運用を移植） ===================== -->
     <!-- ===================== Today（Setup / Close）2026-09-18 ===================== -->
     <div class="tab" id="tab-today">
       <div class="task-head">
@@ -1638,15 +1669,8 @@
       <div id="today-root"></div>
     </div>
 
-    <div class="tab" id="tab-task">
-      <div class="task-head">
-        <div class="seg" id="task-seg" role="tablist">
-          <button role="tab" data-tview="today"  aria-selected="true">TODAY</button>
-          <button role="tab" data-tview="adjust" aria-selected="false">タスク管理</button>
-          <button role="tab" data-tview="all"    aria-selected="false">すべて</button>
-        </div>
-      </div>
-      <div id="task-groups"></div>
+    <div class="tab" id="tab-science">
+      <div id="science-root"></div>
     </div>
 
     <!-- ===================== 準備中タブ ===================== -->
@@ -2166,6 +2190,39 @@ var Store = {
       done(DUMMY_SCHOOLWIDE[weekStart] || { weekStart: weekStart, items: [] });
     }, 500);
   },
+  getScienceUnits: function (done, fail) {
+    if (IS_GAS) {
+      google.script.run.withSuccessHandler(done).withFailureHandler(fail).getScienceUnits();
+      return;
+    }
+    setTimeout(function () {
+      if (MOCK_FAIL) { fail(new Error('mock failure')); return; }
+      var t = realToday();
+      function u(id, no, name, hour, nm, status, dates) {
+        return { id: id, url: 'https://www.notion.so/' + id, name: nm, grade: '1年', unitNo: no, unitName: name, hour: hour,
+          area: '粒子', view: null, goal: '物質の性質を調べる', flow: '', tools: 'ガスバーナー', forms: ['実験'], status: status,
+          feedback: '', driveUrl: null, counts: { kahoot: 1, recipe: 1, artifact: 0, worksheet: 1 },
+          lessons: (dates || []).map(function (d, i) { return { id: id + i, date: d, time: null, periodLabels: ['3校時'] }; }) };
+      }
+      done({ today: t, next: { date: addDays(t, 1), unitId: 'm2', grade: '1年' }, units: [
+        u('m1', '1', '身のまわりの物質', 1, '物質と物体', 'Done', [addDays(t, -7)]),
+        u('m2', '1', '身のまわりの物質', 2, '金属と非金属', 'not', [addDays(t, 1)]),
+        u('m3', '1', '身のまわりの物質', 3, '密度', 'not', []),
+        u('m4', '2', '身のまわりの現象', 1, '光の進み方', 'not', [])
+      ] });
+    }, 500);
+  },
+  updateUnitPlan: function (id, patch) { enqueueWrite('updateUnitPlan', [id, patch]); },
+  getScienceUnitDetail: function (id, done, fail) {
+    if (IS_GAS) {
+      google.script.run.withSuccessHandler(done).withFailureHandler(fail).getScienceUnitDetail(id);
+      return;
+    }
+    setTimeout(function () {
+      done({ url: 'https://www.notion.so/' + id, worksheets: ['ワークシート.pdf'],
+             kahoot: [{ title: '物質クイズ', url: 'https://example.com' }], recipes: [{ title: '金属の性質', url: null }], artifacts: [] });
+    }, 400);
+  },
   getDocs: function (done, fail) {
     if (IS_GAS) {
       google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocs();
@@ -2396,7 +2453,6 @@ function afterColorFor(rec, key) {
    ========================================================================== */
 var state = {
   mode: 'week',
-  taskView: 'today',
   setupTaskView: 'adjust',   /* Setup の中のタスク欄のビュー（2026-09-29）。朝は調整から入る */   /* タスクタブ内のビュー: today | adjust | all */
   /* Today タブ内のビュー: setup（朝）| close（夜）。タブに入るたび時刻で既定を選び直す（2026-09-18） */
   todayView: 'setup',
@@ -2413,6 +2469,13 @@ var state = {
   projectBodies: {},   /* 本文キャッシュ {id: html|null(読み込み中)}。一覧と一緒に破棄 */
   monthYm: null,       /* 月タブ: 表示中の 'YYYY-MM' */
   months: {},          /* 月タブ: {ym: events|null(読み込み中)}。タブに入るたび破棄 */
+  science: null,       /* Science タブ: {units, today, next} | null(未取得)。タブに入るたび取り直す */
+  sciGrade: null,      /* Science タブ: 表示中の学年 '1年'|'2年'|'3年' */
+  sciGroup: null,      /* Science タブ: 開いている単元グループ（学年|単元名） */
+  sciFocus: null,      /* 理科授業カードの「単元計画 ↗」から来たときの対象（単元計画DBのページID）。初期表示で1回だけ使う */
+  sciOpenId: null,     /* Science タブ: 展開中の本時（単元計画DBのページID） */
+  sciDetail: {},       /* 展開時だけ取る関連ページ名 {id: detail|null(読み込み中)|'error'} */
+  sciError: '',
   docs: null,          /* Docs タブ: 頻出書類の一覧。タブに入るたび取り直す */
   docOpenId: null,     /* Docs タブ: 展開中の書類 */
   docQuery: '',        /* Docs タブ: 検索語 */
@@ -3260,6 +3323,23 @@ function renderGridNotes(days) {
   }
 }
 
+/* 理科授業カード（理科単元計画 relation を持つコマ）から Science タブの該当本時へ（2026-10-02 Phase 2） */
+function sciLinkBtn(rec) {
+  var r = (rec.relations || []).filter(function (x) { return x.kind === '単元計画'; })[0];
+  if (!r) return null;
+  var b = el('button', 'sci-link', '単元計画 ↗');
+  b.type = 'button';
+  b.dataset.unit = r.id;
+  b.title = 'Science タブでこの本時を開く';
+  return b;
+}
+function openScienceUnit(unitId) {
+  state.mode = 'science';
+  state.science = null; state.sciError = ''; state.sciDetail = {};
+  state.sciFocus = unitId;
+  window.scrollTo(0, 0);
+  withTransition(refresh);
+}
 function lessonCard(rec, run) {
   var c = el('div', 'lesson');
   c.dataset.grade = rec.grade || '';
@@ -3284,6 +3364,8 @@ function lessonCard(rec, run) {
     if (rec.summary) { sub.appendChild(el('span', 'sm', rec.summary)); c.classList.add('has-sum'); }
     c.appendChild(sub);
   }
+  var sl = sciLinkBtn(rec);
+  if (sl) c.appendChild(sl);
   var tip = [rec.name, subTxt,
              rec.memo || '',
              rec.feedback ? '振り返り: ' + rec.feedback : ''].filter(Boolean).join('\n');
@@ -3492,6 +3574,8 @@ var ICONS = {
   book:    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 220 138"><path d="M43.7 7.1C33 8.5 30.3 10 29.5 14.9q-.6 4.3-2.5 4.1c-1 0-2.7.8-3.8 1.7-1.9 1.6-2.4 5.1-5.6 35.3-6.7 63.9-7.1 69-6 70.8 1.4 2.1 7.3 2.2 30.4.3 22.5-1.9 56.4-1 59.2 1.5 1.2 1.1 4.1 1.9 7.8 2.2 4.8.4 6.6 0 9.7-1.8 3.4-2 5.5-2.2 23.7-2.7 13.1-.4 25.8-.1 36.6.8 9.1.7 19.2 1.3 22.5 1.4 8.7 0 8.7.5 5.4-29.2l-5.4-49.8c-1.4-13.8-3-25.9-3.5-27.1-.4-1.1-2.3-2.5-4.1-3-2.9-.8-3.5-1.5-3.7-4.3-.4-4.1-3.5-5.5-15.8-7.2a88 88 0 0 0-59.6 13.6L110 25l-4.7-3.7A87 87 0 0 0 78.4 9a112 112 0 0 0-34.7-1.9M73.9 12c10 2 22.4 7.4 29.9 12.9L108 28v88.9l-4.9-3.4a82 82 0 0 0-13.2-6.4 107 107 0 0 0-63.1-2.5c-2.6.6-2.7.5-2.2-2.7.6-4.5 8.4-84.4 8.4-86.3 0-5.2 23.5-7.2 40.9-3.6m108.6 1.2c3.4 1.1 4 1.8 4.3 4.3 1.7 17.7 8.3 81.8 8.7 84.2.7 3.8.7 3.8-8.2 1.6a96 96 0 0 0-22.3-1.7c-13.1-.1-16.8.3-24 2.2-8.1 2.2-22 8.3-26.8 11.8l-2.2 1.7.2-44.9.3-44.9 5.5-3.7a91 91 0 0 1 27.5-11.2c8.4-1.9 30.8-1.5 37 .6M28.3 25.7c-1.6 13.7-8.3 85.1-8.3 89.1 0 6.1-1.4 5.8 17.2 3.6a168 168 0 0 1 66.1 4.8l6.7 2.2 9.3-2.7c5-1.4 12.6-3.2 16.7-3.9 9.8-1.6 41-1.6 52.8.1 11.2 1.5 12.4 1 11.6-5.2L196 70.5l-4.6-43.3c-.5-3.4-.3-4.2.9-4.2q1.5.1 2.1.8c.2.4 2.7 21.7 5.5 47.2l5.6 50.2c.3 2.1.1 3.8-.6 4a76 76 0 0 1-11.2-.9c-27.2-3.2-72.6-2.5-76.7 1.2-2.2 2-10.9 2-13.8-.1-5.3-3.7-45.4-4.3-75.5-1.1q-12 1.3-12.6.2c-.6-.7 6-68.3 9.9-101.3q.2-.2 1.8-.2c1.4 0 1.8.6 1.5 2.7m52.5 82.2c9.4 2.7 28.7 12.5 21.2 10.7a190 190 0 0 0-73.2-3l-5.4.6.4-3.5.4-3.6 7.7-1.6c4.2-.9 8.1-1.8 8.6-2.1.6-.2 8.2-.2 17 0a83 83 0 0 1 23.3 2.5m105.1-.9c9.7 2 11.1 2.8 11.1 6.9 0 2.3-.2 2.4-5.7 1.7-26.8-3.3-59.3-1.8-72.7 3.3-2.4 1-2.7.9-1.8-.2 3.1-3.7 17.7-9.8 29.2-12.2 10-2 28.8-1.8 39.9.5"/><path d="M48.2 29c-4.3 1.8-1.2 3 8.1 3 11.8 0 21.1 2 30.1 6.5 8 3.9 8.6 4.1 8.6 2.1s-12.6-8.1-20.5-10.1A78 78 0 0 0 48.2 29m.1 18.7q-3.1.5-3.3 1.9c0 1.1 1.9 1.4 9.3 1.4 11.6 0 23.7 2.8 32.9 7.7 6.8 3.5 8.6 3.8 7.5.9-.8-2.1-14-8.1-21.7-9.9a92 92 0 0 0-24.7-2m-1.8 20.2c-6.4 1.3-2.6 2.6 9.5 3.2 13.9.8 22.6 2.9 31.7 7.8 5.2 2.9 7.3 3.2 7.3 1.1 0-.5-2-2.1-4.4-3.5-11.6-6.8-33-11-44.1-8.6M150.8 30c-8.9 1.5-23.7 7.3-25.3 10-1.6 2.6 1 2.5 5.9-.1 8-4.4 19.5-7.1 31.6-7.4l10.9-.4q.2-.3-.9-1.6c-1.4-1.7-13.6-1.9-22.2-.5m4.7 18.7c-12.9 1.9-30.5 8.8-30.5 11.8 0 2.1 1.3 1.9 8-1.5a75 75 0 0 1 31.7-7q12.7 0 9.8-2.8c-.8-.8-14.7-1.2-19-.5m-4 20.8a92 92 0 0 0-24.9 9q-2.1 1.5-.9 2.6c.7.7 2.8.1 7.3-2.1a70 70 0 0 1 32-7.2c5.8 0 10.9-.2 11.3-.5q.6-.6-.4-1.9c-1.5-1.8-14.5-1.8-24.4.1"/></svg>',
   mega:    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 199 184"><path d="M154.5 16.3a174 174 0 0 1-72.4 32.8c-3.6.5-16.9 1.3-29.4 1.7l-22.9.7-2.9 3.3c-1.6 1.8-2.9 3.9-2.9 4.7s-1.2 1.8-2.7 2.1c-4.5 1.1-7.1 3.3-9.3 7.8a34 34 0 0 0 0 23.3c1.9 4.3 6.9 8.3 10.2 8.3 1.1 0 2.3 1.4 3.2 3.3 1.6 4 5.5 6.7 9.5 6.7 2.3 0 3.2.5 3.6 2.2l7 29.7c4.1 17.6 7 28 8.2 29.3 3.2 3.6 6.1 4 16.8 2.7 8.7-1 10.3-1.5 12.7-4 1.5-1.5 2.8-3.7 2.8-4.8s-2.1-9.1-4.6-17.7-4.4-15.7-4.2-15.8l3-1.4c1.5-.6 3.4-2.2 4.4-3.6 1.6-2.5 1.4-5.4-1.3-15-.5-1.8-.1-1.9 6.3-1.2 26.6 2.7 49.4 12.1 75.3 31.1 1.9 1.4 4.3 2.5 5.3 2.5 6.3 0 12.5-9.2 15.3-22.5 7.7-37.1 2.2-98.1-10-111-5.3-5.7-8-5.1-21 4.8m17.8-1.5c2.5 2.7 4.5 8.3 7.1 19.5 7.5 32 5.7 82.8-3.5 100.8-3.8 7.5-9.7 5.5-13.7-4.5-2.6-6.5-5.7-20-6.7-29.2l-.7-6.1 4.7-.6c2.6-.4 6.6-.7 8.7-.7 7.8 0 12.9-10 11.2-21.7-1.5-10.6-4.2-12.9-15.9-14l-9-.8.3-5c.5-8.4 3.3-23.7 5.4-29.2 3.5-9.5 8.2-12.8 12.1-8.5m-17.8 9.9c-.4 1-1.6 6.7-2.8 12.8-1.6 8.9-2 15.4-2.1 34.5-.1 24.4.9 35 4.5 49.2 2.4 9.6 2.4 9.3-.8 7a182 182 0 0 0-29.8-14.2q-18-6.3-35.8-7.6l-9.6-.7-1-3.1c-3.3-10.4-4-34.7-1.2-43.8 1.1-3.5 1.5-3.7 6.9-4.8A176 176 0 0 0 147 27.6c7.2-4.9 8.6-5.4 7.5-2.9m-83 32c-2.9 7.7-3.1 33.7-.3 43.9l1.4 5.1-18.3.6c-18.9.6-22.4.2-24.2-3-2.5-4.9-3.8-26.6-2.2-38.1 1.3-9.2-1.5-8.5 39-10 4.7-.2 5.2 0 4.6 1.5m90 6.3h4.3l-1.5 4.2a37 37 0 0 0 .6 19.6c.9 1.7.7 2.1-1.2 2.6-1.2.3-3.9.6-5.9.6H154V75.9c0-12.5.2-14 1.6-13.5.9.3 3.5.6 5.9.6m12.2 6.1c2 5.8 1 16.7-1.8 18.4-1.6 1-3.9-6-3.9-11.9 0-10 3.2-13.7 5.7-6.5M22.5 81c0 8.3-.1 15-.3 15-1.7 0-4.6-2.8-5.8-5.5a36 36 0 0 1-.3-18.8c1.1-2.1 4.8-5.6 5.9-5.7.3 0 .5 6.8.5 15m45.9 37.7c1 4.3 4.2 16.5 7.2 27.1s5.2 20.1 4.9 21.2c-.6 1.9-3 2.6-13.5 3.6-5 .4-7 .2-8.5-.9-1.6-1.2-3.4-7.6-8.6-29.4a418 418 0 0 1-6.2-28.6c.2-.4 5.5-.7 11.7-.7h11.2zm11.1-.6c1.8 7.2 1.5 8.5-1.9 9.1-1.6.2-2.2-.8-3.7-6.7-2.4-9.2-2.4-9.5 1-9.5 2.7 0 3 .3 4.6 7.1"/></svg>'
 };
+/* Science タブ用（フラスコ。手描き風でなく簡易線画） */
+ICONS.beaker = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 160 200"><path d="M60 20h40M66 20v52L20 160a14 14 0 0 0 12 22h96a14 14 0 0 0 12-22L94 72V20M42 128h76"/></svg>';
 /* タブバー用（週=schedule-grid / 月=wall-planner / プロジェクト=briefcase / Often Used=bookmark-clip） */
 ICONS.week    = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 197 136"><path d="m12.3 8.4-2.8 2.4v114.4l2.8 2.4 2.8 2.4H98c58.6 0 83.6-.3 85.3-1.1 1.4-.6 3-2.2 3.6-3.6.8-1.7 1.1-19.5 1.1-58.4v-56l-2.5-2.4-2.4-2.5h-168zM183 22.8l.5 11.2H132V22.7c0-6.3.2-11.6.4-11.8s11.6-.2 25.3.1l24.8.5zm-115-.3V34H14V23.7q0-10.2 1.2-11.5c.9-.9 8.3-1.2 27-1.2H68zm60 0V34H73V11h55zm-60 29V64H14V39h54zm60 0V64H73V39h55zm55.7 0-.2 12.5H132V39h51.9zM68 81v13H14V68h54zm60 0v13H73V68h55zm55.5.2V94H132V68l25.8.2 25.7.3zM68 112v13H42.2c-18.7 0-26.1-.3-27-1.2q-1.2-1.2-1.2-13V99h54zm60 0v13H73V99h55zm55-.3-.5 12.8-25.2.3-25.3.2V99h51.5z"/></svg>';
 ICONS.month   = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 193 180"><path d="M42.3 9c-1.2.5-2.9 2.3-3.8 3.9-1.3 2.5-2.2 3.1-5 3.1-2.1 0-4.4.9-6 2.3-2.6 2.2-2.7 2.4-10.5 69.6a928 928 0 0 0-7 69.7 6 6 0 0 0 2.9 2.9c1.6.5 2.1 1.5 2.1 3.9 0 6.8-3.8 6.4 72.1 7.2 37.7.4 69.7.4 71.1.1q2.7-.7 3.9-4.1c1.2-3.3 1.3-3.4 9.7-4.5 10.1-1.3 12.2-2.7 12.2-8.4 0-2.1-1.6-14.3-3.5-27.1L171 63.2a681 681 0 0 0-7-43.2c-1.6-3-4.3-4-11.2-4-6.1 0-6.4-.1-7.5-3-2.2-6-10.1-6.2-13.5-.4-1.6 2.8-2.6 3.4-5.3 3.4s-3.4-.5-3.9-2.5c-1.6-6.4-10.2-7-13.8-.9-1.6 2.7-2.6 3.4-5.2 3.4q-3.2.1-4.1-2.2a15 15 0 0 0-3.6-4.1c-3.5-2.5-7.6-1.3-10.4 3.1-1.6 2.5-2.7 3.1-5.6 3.2-3.1 0-3.8-.4-4.3-2.5C74 7 64.9 6.5 62 12.7c-1.3 2.8-2 3.3-5.1 3.3s-3.8-.4-4.3-2.5c-.3-1.3-2-3.1-3.6-4-3.3-1.7-3.6-1.7-6.7-.5m5.5 5.7Q48.1 16 45 16c-2.8 0-3.1-.2-2-1.5 1.5-1.8 4.1-1.6 4.8.2m23.2-.2c1.1 1.3.7 1.5-2.5 1.5s-3.6-.2-2.5-1.5q1.3-1.4 2.5-1.5 1.3.1 2.5 1.5m23.8.2q.3 1.3-2.7 1.3-3.3.1-2.4-1.6c.6-1.7 4.4-1.5 5.1.3m23.2-.2c1.1 1.3.7 1.5-2.5 1.5s-3.6-.2-2.5-1.5q1.3-1.4 2.5-1.5 1.3.1 2.5 1.5m23 0c1.1 1.3.7 1.5-2.5 1.5s-3.6-.2-2.5-1.5c.7-.8 1.8-1.5 2.5-1.5s1.8.7 2.5 1.5M37.6 23.2c.9 2.9 5.1 8.5 6.9 9.2.8.3 2.4-.3 3.5-1.2 2.7-2.2 1.8-5-1.9-5.9q-4-1-4.1-3.6c0-.4 4-.7 8.9-.7 8.8 0 8.9 0 9.9 2.7 1.1 3.1 6.5 9.3 8.1 9.3 1.4 0 4.1-2.9 4.1-4.5s-3.6-3.8-5-3c-.8.5-3-2.4-3-3.9 0-.3 4.2-.6 9.3-.6l9.2.1 2.4 5c1.4 3 3.3 5.5 4.8 6.2 2.2 1 2.8.8 4.4-1.1q3.5-4.4-2.5-6c-1.7-.5-3.2-1.6-3.4-2.5-.3-1.5.7-1.7 8.6-1.7h9l1.1 3.1c.6 1.8 2.5 4.5 4.1 6.1 2.5 2.4 3.4 2.7 5.1 1.8 2.9-1.6 3.5-4.1 1.3-5.7-1-.7-2.4-1.1-3.1-.9-1.1.5-3.3-2.1-3.3-3.8 0-.3 4-.6 8.9-.6h8.9l1.1 3.3c1.2 3.7 5.5 8.7 7.5 8.7 2.1 0 4.7-3.5 4-5.4-.6-1.5-1.1-1.8-4.2-2-1.3-.1-3.2-2.4-3.2-3.9 0-.4 5.2-.7 11.5-.7s11.5.2 11.5.4l-5.1 45.2c-2.7 24.7-6.1 55-7.3 67.2a184 184 0 0 1-3.3 23.3c-.8.8-127.2-.7-128-1.5-.2-.2.5-7.7 1.6-16.7L23.6 73c3.1-27.2 6.1-50.1 6.6-50.8 1.8-2.1 6.6-1.5 7.4 1M160 80c-2 84.5-2.1 86.9-4 87.5-1 .3-30.1.1-64.6-.5l-67.1-1c-4 0-4.3-.2-4.3-2.6v-2.7l39.7.7c86.3 1.4 84.2 1.4 86.3-1.1 1-1.2 2-4.7 2.3-8 2.8-27.1 12.1-110.2 12.3-110 .2.1-.1 17.1-.6 37.7m8.6-1.5a3875 3875 0 0 0 11.1 77.1c-.1.1-3.9-1-8.5-2.5l-8.3-2.6.5-20.5 1.3-48c.4-15.1.9-26.2 1.1-24.5.1 1.6 1.4 11.1 2.8 21m2.9 79.6q.6.8-3.8.9c-4 0-4.7-.3-4.7-1.9 0-1.8.4-1.8 3.8-.9 2 .5 4.1 1.4 4.7 1.9"/></svg>';
@@ -3538,8 +3622,7 @@ function setTaskDate(t, d) {
 }
 function rerenderTasks() {
   var mode = $('#shell').dataset.mode;
-  if (mode === 'task') renderTaskTab();
-  else if (mode === 'today') renderTodayTab();     /* Setup の中のタスク管理（2026-09-29） */
+  if (mode === 'today') renderTodayTab();     /* Setup の中のタスク管理（2026-09-29） */
   else refresh();
 }
 
@@ -3635,7 +3718,7 @@ function showToast(msg, undoFn) {
    Docs タブ（検索語が消える）では触らない */
 setInterval(function () {
   if (pickerEl || document.querySelector('.dragging, .drag-card')) return;
-  if (state.mode === 'often' || state.loading) return;
+  if (state.mode === 'often' || state.mode === 'science' || state.loading) return;
   /* 入力途中のタスク名を描き直しで消さない（2026-09-15） */
   if ($all('.quickadd input').some(function (i) { return i.value || i === document.activeElement; })) return;
   var running = DUMMY_TASKS.some(function (t) { return t.status === 'In Progress'; });
@@ -3927,8 +4010,12 @@ function renderDayTasks(pane, date) {
       msg.appendChild(el('b', null, '積み残し ' + od.length + '件'));
       msg.appendChild(document.createTextNode(' があります'));
       al.appendChild(msg);
-      var go = el('button', null, 'タスクタブへ →');
-      go.addEventListener('click', function () { state.mode = 'task'; state.taskView = 'today'; withTransition(refresh); });
+      var go = el('button', null, 'Setup で調整 →');
+      go.addEventListener('click', function () {
+        state.mode = 'today'; state.todayView = 'setup'; state.setupTaskView = 'adjust';
+        if (!state.selectedDate) state.selectedDate = realToday();
+        withTransition(refresh);
+      });
       al.appendChild(go);
       wrap.appendChild(al);
     }
@@ -4193,6 +4280,8 @@ function renderTodaySetup(root, date, j, dd) {
       var td = el('td');
       td.appendChild(el('div', null, L.rec.name || '—'));
       td.appendChild(el('div', 'st', L.rec.summary || '概要が未入力'));
+      var slb = sciLinkBtn(L.rec);
+      if (slb) td.appendChild(slb);
       tr.appendChild(td);
       tb2.appendChild(tr);
     });
@@ -4360,16 +4449,7 @@ function renderTodayClose(root, date, j, dd) {
   ));
 }
 
-function renderTaskTab() {
-  $all('#task-seg button').forEach(function (b) {
-    b.setAttribute('aria-selected', String(b.dataset.tview === state.taskView));
-  });
-  var root = $('#task-groups');
-  root.textContent = '';
-  buildTaskView(root, state.taskView);
-}
-
-/* タスクの3ビュー（TODAY／タスク管理／すべて）を root に描く。Tasks タブと Setup の両方から使う（2026-09-29） */
+/* タスクの3ビュー（TODAY／タスク管理／すべて）を root に描く。Setup から使う（2026-09-29。Tasks タブは 2026-10-02 に廃止して Science に置き換えた） */
 function buildTaskView(root, view) {
   var td = todayStr();
   if (state.loading) { root.appendChild(el('div', 'stateband', '読み込み中…')); return; }
@@ -4888,7 +4968,7 @@ function openTaskPicker(day, p, x, y) {
   }
 
   var listEl = el('div', 'tp-list');
-  if (!cands.length) listEl.appendChild(el('div', 'empty', placed.length ? '他に置けるタスクはありません' : mdw(day) + ' のタスクがありません（タスクタブで日付を付けると出ます）'));
+  if (!cands.length) listEl.appendChild(el('div', 'empty', placed.length ? '他に置けるタスクはありません' : mdw(day) + ' のタスクがありません（Setup のタスク管理で日付を付けると出ます）'));
   cands.forEach(function (t) {
     var b = el('button', 'tp-item');
     b.appendChild(el('span', 'tn', t.name));
@@ -5012,7 +5092,7 @@ $('#grid').addEventListener('click', function (e) {
 
 /* ---- グリッド上のカード（タスク・授業）をドラッグして別のコマへ ---- */
 $('#grid').addEventListener('pointerdown', function (e) {
-  if (e.target.closest('.ck')) return;                /* ☐（完了ボタン）はドラッグ開始にしない */
+  if (e.target.closest('.ck, .sci-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
   var card = e.target.closest('.taskcard, .lesson');
   if (!card || !state.week) return;
   var isTask = card.classList.contains('taskcard');
@@ -5659,6 +5739,8 @@ function openLessonEditor(opts, x, y) {
 /* 授業カードのクリック → 編集（週グリッド・SP 日送りリスト共通。document 委任） */
 var suppressLessonClick = false;
 document.addEventListener('click', function (e) {
+  var sl = e.target.closest('.sci-link');            /* 「単元計画 ↗」はカード編集を開かず Science タブへ */
+  if (sl && sl.dataset.unit) { openScienceUnit(sl.dataset.unit); return; }
   if (suppressLessonClick) return;
   var card = e.target.closest('.lesson');
   if (!card || !card.dataset.lid) return;
@@ -5820,6 +5902,262 @@ function renderDocsTab() {
   docs.forEach(function (d) { root.appendChild(docItem(d)); });
 }
 
+/* ==========================================================================
+   Science タブ（2026-10-02。設計メモ｜理科タブ.md）。Phase 1 は閲覧のみ
+   ========================================================================== */
+var SCI_GRADES = ['1年', '2年', '3年'];
+
+function sciGroupKey(u) { return u.grade + '|' + u.unitName; }
+
+/* 学年内の単元グループ（単元No順）。各グループの本時は 時数 順 */
+function sciGroups(grade) {
+  var map = {}, order = [];
+  state.science.units.forEach(function (u) {
+    if (u.grade !== grade) return;
+    var k = sciGroupKey(u);
+    if (!map[k]) { map[k] = { key: k, name: u.unitName, no: u.unitNo ? +u.unitNo : 99, area: u.area, lessons: [] }; order.push(map[k]); }
+    map[k].lessons.push(u);
+  });
+  order.forEach(function (g) {
+    g.lessons.sort(function (a, b) {
+      var ah = a.hour == null ? 999 : a.hour, bh = b.hour == null ? 999 : b.hour;
+      return ah !== bh ? ah - bh : (a.name < b.name ? -1 : 1);
+    });
+    g.done = g.lessons.filter(function (l) { return l.status === 'Done'; }).length;
+  });
+  order.sort(function (a, b) { return a.no !== b.no ? a.no - b.no : (a.name < b.name ? -1 : 1); });
+  return order;
+}
+
+/* 学年を切り替えたとき・初期表示で開く単元: 最初の status=not の単元（全部 Done なら先頭） */
+function sciFirstOpenGroup(grade) {
+  var gs = sciGroups(grade);
+  for (var i = 0; i < gs.length; i++) if (gs[i].done < gs[i].lessons.length) return gs[i].key;
+  return gs.length ? gs[0].key : null;
+}
+
+/* 初期表示: 今日以降で最初の理科授業の学年・紐づく単元 → 前回の学年 → 1年 */
+function sciInitSelection() {
+  var sc = state.science, grade = null, group = null, open = null;
+  function byId(id) { id = String(id).replace(/-/g, ''); return sc.units.filter(function (u) { return u.id.replace(/-/g, '') === id; })[0] || null; }
+  var focus = state.sciFocus; state.sciFocus = null;   /* 理科授業カードからの遷移は「次の授業」より優先 */
+  var nu = (focus && byId(focus)) || (sc.next && sc.next.unitId ? byId(sc.next.unitId) : null);
+  if (nu) {
+    grade = nu.grade; group = sciGroupKey(nu); open = nu.id;
+  } else {
+    if (sc.next && sc.next.grade) grade = sc.next.grade;
+    if (!grade) { try { grade = localStorage.getItem('dc.sciGrade'); } catch (e) {} }
+    if (SCI_GRADES.indexOf(grade) < 0) grade = '1年';
+    group = sciFirstOpenGroup(grade);
+  }
+  state.sciGrade = grade; state.sciGroup = group; state.sciOpenId = open;
+}
+
+function sciLoadDetail(id) {
+  if (state.sciDetail[id] !== undefined) return;
+  state.sciDetail[id] = null;
+  Store.getScienceUnitDetail(id, function (d) {
+    state.sciDetail[id] = d || 'error';
+    if (state.mode === 'science') renderScienceTab();
+  }, function () {
+    state.sciDetail[id] = 'error';
+    if (state.mode === 'science') renderScienceTab();
+  });
+}
+
+/* 一覧に出す実施日バッジ: 今日以降で最初の日、無ければ直近の過去日 */
+function sciDateBadge(u) {
+  var today = state.science.today, ds = u.lessons.map(function (l) { return l.date; });
+  if (!ds.length) return el('span', 'sci-badge undated', '日程未定');
+  var next = ds.filter(function (d) { return d >= today; })[0];
+  var d = next || ds[ds.length - 1];
+  var b = el('span', 'sci-badge date', mdw(d) + (ds.length > 1 ? ' +' + (ds.length - 1) : ''));
+  return b;
+}
+
+function sciLessonItem(u) {
+  var today = state.science.today;
+  var isDone = u.status === 'Done';
+  var item = el('div', 'doc-item sci-lesson' + (isDone ? ' done' : ''));
+  var head = el('button', 'doc-head');
+  head.appendChild(el('span', 'hr', u.hour == null ? '' : String(u.hour)));
+  head.appendChild(el('span', 'tn', u.name || '(無題)'));
+  var badges = el('span', 'sci-badges');
+  if (isDone) badges.appendChild(el('span', 'sci-badge ok', '✓'));
+  else if (u.lessons.length && u.lessons[u.lessons.length - 1].date < today) badges.appendChild(el('span', 'sci-badge warn', '要確認'));
+  badges.appendChild(sciDateBadge(u));
+  [['kahoot', u.counts.kahoot], ['実験', u.counts.recipe], ['AF', u.counts.artifact], ['WS', u.counts.worksheet]].forEach(function (c) {
+    if (c[1]) badges.appendChild(el('span', 'sci-badge', c[0] + ' ' + c[1]));
+  });
+  head.appendChild(badges);
+  head.addEventListener('click', function () {
+    state.sciOpenId = state.sciOpenId === u.id ? null : u.id;
+    renderScienceTab();
+  });
+  item.appendChild(head);
+
+  if (state.sciOpenId === u.id) {
+    var dt = el('div', 'doc-detail');
+    function row(label, node) {
+      var r = el('div', 'row');
+      r.appendChild(el('b', null, label));
+      if (typeof node === 'string') r.appendChild(el('span', null, node)); else r.appendChild(node);
+      dt.appendChild(r);
+    }
+    if (u.goal) row('目標', u.goal);
+    if (u.flow) row('流れ', u.flow);
+    if (u.tools) row('道具', u.tools);
+    if (u.forms.length) row('授業形態', u.forms.join('・'));
+    if (u.view) row('見方', u.view);
+    if (u.lessons.length) row('実施日', u.lessons.map(function (l) {
+      return mdw(l.date) + (l.periodLabels.length ? ' ' + l.periodLabels.join('・') : '');
+    }).join('\n'));
+    /* フィードバックは常にテキスト欄（Phase 3）。フォーカスが外れたとき、変わっていれば保存 */
+    var fb = document.createElement('textarea');
+    fb.rows = 2;
+    fb.value = u.feedback || '';
+    fb.placeholder = '授業後の振り返り';
+    fb.style.cssText = 'flex:1;min-width:0;font:inherit;font-size:var(--fs-sm);border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--paper);color:var(--ink);';
+    fb.addEventListener('blur', function () {
+      if (fb.value === (u.feedback || '')) return;
+      u.feedback = fb.value;
+      Store.updateUnitPlan(u.id, { feedback: fb.value });
+      showToast('フィードバックを保存しました');
+    });
+    row('フィードバック', fb);
+
+    /* 関連ページ名は展開したときだけ取る（件数ゼロなら取りに行かない） */
+    var anyRel = u.counts.kahoot || u.counts.recipe || u.counts.artifact || u.counts.worksheet;
+    if (anyRel) {
+      sciLoadDetail(u.id);
+      var d = state.sciDetail[u.id];
+      if (d === null || d === undefined) row('関連', el('span', 'doc-empty', '読み込み中…'));
+      else if (d === 'error') row('関連', el('span', 'doc-empty', '取得できませんでした'));
+      else {
+        [['kahoot', d.kahoot], ['実験レシピ', d.recipes], ['アーティファクト', d.artifacts]].forEach(function (g) {
+          if (!g[1] || !g[1].length) return;
+          var box = el('span', 'sci-rel');
+          g[1].forEach(function (it) {
+            if (it.url) { var a = el('a', null, it.title); a.href = it.url; a.target = '_blank'; a.rel = 'noopener'; box.appendChild(a); }
+            else box.appendChild(el('span', 'na', it.title));
+          });
+          row(g[0], box);
+        });
+        if (d.worksheets && d.worksheets.length) row('ワークシート', d.worksheets.join('\n') + '\n（開くには Notion へ）');
+      }
+    }
+
+    var acts = el('div', 'acts');
+    if (u.url) {
+      var a = el('a', 'act open', 'Notion で開く ↗');
+      a.href = u.url; a.target = '_blank'; a.rel = 'noopener';
+      acts.appendChild(a);
+    }
+    var st = el('button', 'act pin', isDone ? '↩ 未実施に戻す' : '✓ Done にする');
+    st.type = 'button';
+    st.addEventListener('click', function () {
+      var prev = u.status, next = isDone ? 'not' : 'Done';
+      u.status = next;
+      Store.updateUnitPlan(u.id, { status: next });
+      renderScienceTab();
+      showToast('「' + (u.name || '本時') + '」を ' + (next === 'Done' ? 'Done' : '未実施') + ' にしました', function () {
+        u.status = prev;
+        Store.updateUnitPlan(u.id, { status: prev });
+        renderScienceTab();
+      });
+    });
+    acts.appendChild(st);
+    if (u.driveUrl) {
+      var g = el('a', 'act open', 'Google Drive ↗');
+      g.href = u.driveUrl; g.target = '_blank'; g.rel = 'noopener';
+      acts.appendChild(g);
+    }
+    dt.appendChild(acts);
+    item.appendChild(dt);
+  }
+  return item;
+}
+
+function renderScienceTab() {
+  var root = $('#science-root');
+  root.textContent = '';
+
+  if (!state.science) {
+    if (state.sciError) {
+      var sb = el('div', 'stateband', '取得に失敗しました。（' + state.sciError + '）');
+      var rb = el('button', null, '再読み込み');
+      rb.addEventListener('click', function () { state.sciError = ''; renderScienceTab(); });
+      sb.appendChild(rb);
+      root.appendChild(sb);
+      return;
+    }
+    root.appendChild(el('div', 'stateband', '読み込み中…'));
+    if (renderScienceTab._loading) return;
+    renderScienceTab._loading = true;
+    Store.getScienceUnits(function (res) {
+      renderScienceTab._loading = false;
+      state.science = res || { units: [], today: realToday(), next: {} };
+      sciInitSelection();
+      if (state.mode === 'science') withTransition(renderScienceTab);
+    }, function (e) {
+      renderScienceTab._loading = false;
+      state.sciError = (e && e.message) ? String(e.message).slice(0, 160) : '通信エラー';
+      if (state.mode === 'science') renderScienceTab();
+    });
+    return;
+  }
+
+  /* 学年切替 */
+  var head = el('div', 'task-head');
+  var seg = el('div', 'seg');
+  seg.setAttribute('role', 'tablist');
+  SCI_GRADES.forEach(function (g) {
+    var b = el('button', null, g);
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(g === state.sciGrade));
+    b.addEventListener('click', function () {
+      if (g === state.sciGrade) return;
+      state.sciGrade = g;
+      state.sciGroup = sciFirstOpenGroup(g);
+      state.sciOpenId = null;
+      try { localStorage.setItem('dc.sciGrade', g); } catch (e) {}
+      withTransition(renderScienceTab);
+    });
+    seg.appendChild(b);
+  });
+  head.appendChild(seg);
+  root.appendChild(head);
+
+  var groups = sciGroups(state.sciGrade);
+  if (!groups.length) { root.appendChild(el('div', 'doc-empty', 'この学年の単元計画はまだありません')); return; }
+
+  groups.forEach(function (g) {
+    var open = state.sciGroup === g.key;
+    var gh = el('button', 'sci-ghead');
+    gh.appendChild(el('span', 'no', g.no === 99 ? '' : String(g.no)));
+    gh.appendChild(el('span', 'tn', g.name));
+    if (g.area) gh.appendChild(el('span', 'area', g.area));
+    var bar = el('span', 'sci-bar');
+    var fill = document.createElement('i');
+    fill.style.width = Math.round(100 * g.done / g.lessons.length) + '%';
+    bar.appendChild(fill);
+    gh.appendChild(bar);
+    gh.appendChild(el('span', 'prog', g.done + '/' + g.lessons.length));
+    gh.appendChild(el('span', 'caret', open ? '▼' : '▶'));
+    gh.addEventListener('click', function () {
+      state.sciGroup = open ? null : g.key;
+      if (open) state.sciOpenId = null;
+      renderScienceTab();
+    });
+    root.appendChild(gh);
+    if (open) {
+      var body = el('div', 'sci-body');
+      g.lessons.forEach(function (u) { body.appendChild(sciLessonItem(u)); });
+      root.appendChild(body);
+    }
+  });
+}
+
 /* --- 全体 refresh --- */
 function refresh() {
   $('#shell').dataset.mode = state.mode;
@@ -5845,7 +6183,7 @@ function refresh() {
   $('#banner-quote').textContent = (state.week && state.week.kokoroe) || '';
 
   if (state.mode === 'today') { renderTodayTab(); return; }
-  if (state.mode === 'task') { renderTaskTab(); return; }
+  if (state.mode === 'science') { renderScienceTab(); return; }
   if (state.mode === 'project') { renderProjectTab(); return; }
   if (state.mode === 'month') { renderMonthTab(); return; }
   if (state.mode === 'often') { renderDocsTab(); return; }
@@ -5954,6 +6292,7 @@ $('#tabs').addEventListener('click', function (e) {
   if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
   if (state.mode === 'often') { state.docs = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; }  /* 〃 */
+  if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; }  /* 〃 */
   withTransition(refresh);
 });
 
@@ -5963,14 +6302,6 @@ $('#today-seg').addEventListener('click', function (e) {
   if (!b || b.dataset.tview === state.todayView) return;
   state.todayView = b.dataset.tview;
   withTransition(renderTodayTab);
-});
-
-/* タスクタブ内のビュー切替 */
-$('#task-seg').addEventListener('click', function (e) {
-  var b = e.target.closest('button[data-tview]');
-  if (!b || b.dataset.tview === state.taskView) return;
-  state.taskView = b.dataset.tview;
-  withTransition(renderTaskTab);
 });
 
 /* 週ナビ（表の見出し行。PC・SP 共通ハンドラ。2026-09-09 にヘッダーからここへ移した） */

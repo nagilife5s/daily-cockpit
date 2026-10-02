@@ -2522,7 +2522,9 @@ var state = {
   sciLessonsError: '',
   sciSel: null,        /* 左ペインで選んでいる授業（ナギレンダーのページID）。右の本時の「← 紐づけ」の対象 */
   sciPane: 'lessons',  /* 狭い画面で見ているペイン: lessons | units */
-  sciPast: false,      /* 左ペイン: 1週間より前の授業も出す */
+  sciPast: false,
+  sciDesc: (function () { try { return localStorage.getItem('dc.sciDesc') === '1'; } catch (e) { return false; } })(),   /* 左ペインの並び: 日付の新しい順 */
+  sciScrollToday: false,      /* 左ペイン: 1週間より前の授業も出す */
   sciFocus: null,      /* 理科授業カードの「単元計画 ↗」から来たときの対象（単元計画DBのページID）。初期表示で1回だけ使う */
   sciOpenId: null,     /* Science タブ: 展開中の本時（単元計画DBのページID） */
   sciDetail: {},       /* 展開時だけ取る関連ページ名 {id: detail|null(読み込み中)|'error'} */
@@ -6287,13 +6289,23 @@ function sciLeftPane() {
   var today = state.science.today, cut = addDays(today, -7);
   var all = state.sciLessons.filter(function (l) { return l.grade === state.sciGrade; }).sort(sciLessonSort);
   var list = state.sciPast ? all : all.filter(function (l) { return l.date >= cut; });
+  if (state.sciDesc) list = list.slice().reverse();
 
   var lh = el('div', 'sci-lh');
   lh.appendChild(el('span', null, state.sciGrade + ' の理科 ' + list.length + (state.sciPast ? '' : '/' + all.length) + 'コマ'));
   var tg = el('button', null, state.sciPast ? '過去を隠す' : '過去も見る');
   tg.type = 'button';
-  tg.addEventListener('click', function () { state.sciPast = !state.sciPast; renderScienceTab(); });
+  tg.addEventListener('click', function () { state.sciPast = !state.sciPast; state.sciScrollToday = state.sciPast; renderScienceTab(); });
   lh.appendChild(tg);
+  var so = el('button', null, state.sciDesc ? '日付 ↓ 新しい順' : '日付 ↑ 古い順');
+  so.type = 'button';
+  so.addEventListener('click', function () {
+    state.sciDesc = !state.sciDesc;
+    try { localStorage.setItem('dc.sciDesc', state.sciDesc ? '1' : '0'); } catch (e) {}
+    state.sciScrollToday = state.sciPast;
+    renderScienceTab();
+  });
+  lh.appendChild(so);
   var diffs = all.filter(function (l) { return l.seq !== l.cseq; });
   if (diffs.length) {
     var sy = el('button', null, '授業数を Notion に反映（' + diffs.length + '件）');
@@ -6311,7 +6323,21 @@ function sciLeftPane() {
   }
   pane.appendChild(lh);
   if (!list.length) pane.appendChild(el('div', 'doc-empty', '表示する授業がありません'));
-  list.forEach(function (l) { pane.appendChild(sciLessonRow(l)); });
+  var todayRow = null, todayDate = null;
+  list.forEach(function (l) {
+    var r = sciLessonRow(l);
+    if (l.date >= today && (todayDate === null || l.date < todayDate)) { todayRow = r; todayDate = l.date; }   /* 今日に一番近い今日以降の授業（新しい順でも同じ） */
+    pane.appendChild(r);
+  });
+  /* 過去も見るとき・並びを変えたときは、今日の授業が見える位置までスクロールする */
+  if (state.sciScrollToday && todayRow) {
+    state.sciScrollToday = false;
+    setTimeout(function () {
+      var box = pane;
+      if (box.scrollHeight > box.clientHeight + 2) box.scrollTop = todayRow.offsetTop - box.offsetTop - 40;
+      else { var y = todayRow.getBoundingClientRect().top + window.scrollY - 80; window.scrollTo(0, y); }
+    }, 0);
+  }
   return pane;
 }
 

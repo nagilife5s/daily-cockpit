@@ -850,8 +850,12 @@ function createApi(env) {
       const today = todayJst_();
       const fyStart = (+today.slice(5, 7) >= 4 ? today.slice(0, 4) : String(+today.slice(0, 4) - 1)) + '-04-01';
       const rows = await queryAll_('nagi', {
+        /* 過去の授業は 種別 が空のことがあるので、Notion の「理科」ビューと同じく Name に「理」を含むものも拾う（実データで確認 2026-10-02） */
         filter: { and: [
-          { property: '種別', select: { equals: '理科' } },
+          { or: [
+            { property: '種別', select: { equals: '理科' } },
+            { property: 'Name', title: { contains: '理' } }
+          ] },
           { property: '日付', date: { on_or_after: fyStart } }
         ] },
         sorts: [{ property: '日付', direction: 'ascending' }]

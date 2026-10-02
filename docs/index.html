@@ -2259,7 +2259,12 @@ var Store = {
       done({ today: t, lessons: [L('l1', addDays(t, -7), 3, 1, 'm1', '物質と物体'), L('l2', addDays(t, 1), 2, null, null, ''), L('l3', addDays(t, 3), 4, null, null, ''), L('l4', addDays(t, 8), 1, null, null, '')] });
     }, 500);
   },
-  setLessonSeqs: function (items, done) { enqueueWrite('setLessonSeqs', [items], done); },
+  setLessonSeqs: function (items, done) {            /* Worker の上限（1回20コマ）に合わせて20件ずつ順に送る */
+    for (var i = 0; i < items.length; i += 20) {
+      var last = i + 20 >= items.length;
+      enqueueWrite('setLessonSeqs', [items.slice(i, i + 20)], last ? done : null);
+    }
+  },
   updateUnitPlan: function (id, patch) { enqueueWrite('updateUnitPlan', [id, patch]); },
   getScienceUnitDetail: function (id, done, fail) {
     if (IS_GAS) {

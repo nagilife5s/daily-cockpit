@@ -959,9 +959,10 @@ function createApi(env) {
       return { ok: true };
     },
 
-    /* 授業数の一括反映。items: [{id, seq}]。ナギレンダーのコマ以外は拒否。順番に書く（Notion のレート制限対策） */
+    /* 授業数の反映。items: [{id, seq}]。ナギレンダーのコマ以外は拒否。順番に書く（Notion のレート制限対策）。
+       1コマ＝取得＋更新の2リクエストで、Worker は1回の呼び出しで50リクエストまでなので、1回20コマまで（画面側で20件ずつに分けて呼ぶ） */
     async setLessonSeqs(items) {
-      items = (items || []).slice(0, 120);
+      items = (items || []).slice(0, 20);
       let n = 0;
       for (const it of items) {
         await fetchPageOf_(it.id, 'nagi', 'ナギレンダーのコマ');

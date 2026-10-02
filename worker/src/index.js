@@ -777,9 +777,14 @@ function createApi(env) {
     async getScienceUnits() {
       await warmApiMode_();
       const today = todayJst_();
+      const fyStart = (+today.slice(5, 7) >= 4 ? today.slice(0, 4) : String(+today.slice(0, 4) - 1)) + '-04-01';
       const [unitRows, lessonRows, nextRows] = await Promise.all([
         queryAll_('sciunit', {}),
-        queryAll_('nagi', { filter: { property: '理科単元計画', relation: { is_not_empty: true } } }),
+        /* 単元計画DBは年度をまたいで使われ、過去年度のコマも紐づいている（2026-10-02 実データで確認）。今年度（4/1〜）に限る */
+        queryAll_('nagi', { filter: { and: [
+          { property: '理科単元計画', relation: { is_not_empty: true } },
+          { property: '日付', date: { on_or_after: fyStart } }
+        ] } }),
         queryAll_('nagi', { filter: { and: [
           { property: '種別', select: { equals: '理科' } },
           { property: '日付', date: { on_or_after: today } }

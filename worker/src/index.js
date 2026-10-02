@@ -850,11 +850,11 @@ function createApi(env) {
       const today = todayJst_();
       const fyStart = (+today.slice(5, 7) >= 4 ? today.slice(0, 4) : String(+today.slice(0, 4) - 1)) + '-04-01';
       const rows = await queryAll_('nagi', {
-        /* 過去の授業は 種別 が空のことがあるので、Notion の「理科」ビューと同じく Name に「理」を含むものも拾う（実データで確認 2026-10-02） */
+        /* 種別＝理科 が正。種別が未設定のコマ（新規作成など）も「理科」で始まる名前なら拾う。「理」を含むだけでは 伝承料理・管理職 まで混ざるので使わない */
         filter: { and: [
           { or: [
             { property: '種別', select: { equals: '理科' } },
-            { property: 'Name', title: { contains: '理' } }
+            { property: 'Name', title: { starts_with: '理科' } }
           ] },
           { property: '日付', date: { on_or_after: fyStart } }
         ] },
@@ -867,7 +867,7 @@ function createApi(env) {
         const unit = l.relations.filter(r => r.kind === '単元計画')[0];
         lessons.push({
           id: l.id, name: l.name, date: l.date, time: l.time, periodLabels: l.periodLabels,
-          grade: normGrade_(l.grade), summary: l.summary, memo: l.memo,
+          grade: normGrade_(l.grade), cls: propSelect_((pg.properties || {})['クラス']), summary: l.summary, memo: l.memo,
           seq: propNumber_((pg.properties || {})['授業数']),
           unitId: unit ? unit.id : null
         });

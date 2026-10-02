@@ -895,8 +895,10 @@
   .sci-lrow { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 6px; overflow: hidden; }
   .sci-lrow.sel { border-color: var(--c-events); }
   .sci-lrow.past { opacity: .6; }
-  .sci-lhead { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; cursor: pointer; }
+  .sci-lhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; cursor: pointer; }
   .sci-lhead .sq { flex: none; width: 2.2em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .sci-lhead .sm { flex-basis: 100%; margin-left: calc(2.2em + 8px); font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.5;
+                   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .sci-lhead .sq.diff { color: var(--c-leave); }
   .sci-lhead .dt { flex: none; font-size: var(--fs-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .sci-lhead .tn { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2523,6 +2525,7 @@ var state = {
   sciSel: null,        /* 左ペインで選んでいる授業（ナギレンダーのページID）。右の本時の「← 紐づけ」の対象 */
   sciPane: 'lessons',  /* 狭い画面で見ているペイン: lessons | units */
   sciPast: false,
+  sciClass: null,      /* 左ペイン: クラス（1組…）で絞る。null=すべて。クラスが入っている学年にだけ選択肢を出す */
   sciDesc: (function () { try { return localStorage.getItem('dc.sciDesc') === '1'; } catch (e) { return false; } })(),   /* 左ペインの並び: 日付の新しい順 */
   sciScrollToday: false,      /* 左ペイン: 1週間より前の授業も出す */
   sciFocus: null,      /* 理科授業カードの「単元計画 ↗」から来たときの対象（単元計画DBのページID）。初期表示で1回だけ使う */
@@ -6162,7 +6165,7 @@ function sciLessonSort(a, b) {
 /* 授業数 = 学年ごとの通し番号（日付順で今年度の何コマ目か）。手で振らず、数えて出す */
 function sciComputeSeq() {
   var by = {};
-  state.sciLessons.forEach(function (l) { (by[l.grade] = by[l.grade] || []).push(l); });
+  state.sciLessons.forEach(function (l) { var k = l.grade + '|' + (l.cls || ''); (by[k] = by[k] || []).push(l); });   /* 通し番号は 学年×クラス ごと */
   Object.keys(by).forEach(function (g) {
     by[g].sort(sciLessonSort).forEach(function (l, i) { l.cseq = i + 1; });
   });
@@ -6243,6 +6246,7 @@ function sciLessonRow(l) {
   head.appendChild(el('span', 'tn', l.name || '(無題)'));
   var u = l.unitId ? sciUnitById(l.unitId) : null;
   head.appendChild(el('span', 'un' + (u ? '' : ' none'), u ? ((u.hour != null ? u.hour + '. ' : '') + (u.name || '本時')) : '未紐づけ'));
+  if (!sel && l.summary) head.appendChild(el('span', 'sm', l.summary));       /* 一覧にも概要を出す（選択中は下の編集欄に出る） */
   head.addEventListener('click', function () { sciSelectLesson(l.id); });
   row.appendChild(head);
 
@@ -6287,12 +6291,26 @@ function sciLeftPane() {
   if (state.sciLessonsError) { pane.appendChild(el('div', 'stateband', '授業の取得に失敗しました。（' + state.sciLessonsError + '）')); return pane; }
   if (!state.sciLessons) { pane.appendChild(el('div', 'stateband', '授業を読み込み中…')); return pane; }
   var today = state.science.today, cut = addDays(today, -7);
-  var all = state.sciLessons.filter(function (l) { return l.grade === state.sciGrade; }).sort(sciLessonSort);
+  var inGrade = state.sciLessons.filter(function (l) { return l.grade === state.sciGrade; });
+  var classes = [];
+  inGrade.forEach(function (l) { if (l.cls && classes.indexOf(l.cls) < 0) classes.push(l.cls); });
+  classes.sort();
+  if (state.sciClass && classes.indexOf(state.sciClass) < 0) state.sciClass = null;
+  var all = inGrade.filter(function (l) { return !state.sciClass || l.cls === state.sciClass; }).sort(sciLessonSort);
   var list = state.sciPast ? all : all.filter(function (l) { return l.date >= cut; });
   if (state.sciDesc) list = list.slice().reverse();
 
   var lh = el('div', 'sci-lh');
   lh.appendChild(el('span', null, state.sciGrade + ' の理科 ' + list.length + (state.sciPast ? '' : '/' + all.length) + 'コマ'));
+  if (classes.length) {
+    ['', ...classes].forEach(function (c) {
+      var cb = el('button', null, c || '全クラス');
+      cb.type = 'button';
+      if ((state.sciClass || '') === c) cb.style.fontWeight = '800';
+      cb.addEventListener('click', function () { state.sciClass = c || null; renderScienceTab(); });
+      lh.appendChild(cb);
+    });
+  }
   var tg = el('button', null, state.sciPast ? '過去を隠す' : '過去も見る');
   tg.type = 'button';
   tg.addEventListener('click', function () { state.sciPast = !state.sciPast; state.sciScrollToday = state.sciPast; renderScienceTab(); });
@@ -6398,7 +6416,7 @@ function renderScienceTab() {
       state.sciGrade = g;
       state.sciGroup = sciFirstOpenGroup(g);
       state.sciOpenId = null;
-      state.sciSel = null;
+      state.sciSel = null; state.sciClass = null;
       try { localStorage.setItem('dc.sciGrade', g); } catch (e) {}
       withTransition(renderScienceTab);
     });

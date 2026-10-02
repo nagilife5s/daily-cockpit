@@ -879,6 +879,39 @@
              background: color-mix(in oklch, var(--ink) 10%, var(--mixbase)); }
   .sci-bar i { display: block; height: 100%; background: var(--c-events); }
   .sci-body { margin: 0 0 12px 10px; }
+  /* 2ペイン（左: ナギレンダーの理科の授業 / 右: 単元計画）。狭い画面は片方ずつ切り替える */
+  .sci-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .sci-panetoggle { display: flex; margin-left: 8px; }
+  .sci-cols[data-pane="lessons"] .sci-right { display: none; }
+  .sci-cols[data-pane="units"] .sci-left { display: none; }
+  @media (min-width: 960px) {
+    .sci-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+    .sci-cols[data-pane] .sci-right, .sci-cols[data-pane] .sci-left { display: block; }
+    .sci-panetoggle { display: none; }
+    .sci-left { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; padding-right: 4px; }
+  }
+  .sci-lh { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; font-size: var(--fs-xs); color: var(--ink-3); flex-wrap: wrap; }
+  .sci-lh button { border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); font-size: var(--fs-xs); font-weight: 600; border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+  .sci-lrow { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 6px; overflow: hidden; }
+  .sci-lrow.sel { border-color: var(--c-events); }
+  .sci-lrow.past { opacity: .6; }
+  .sci-lhead { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; cursor: pointer; }
+  .sci-lhead .sq { flex: none; width: 2.2em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .sci-lhead .sq.diff { color: var(--c-leave); }
+  .sci-lhead .dt { flex: none; font-size: var(--fs-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .sci-lhead .tn { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sci-lhead .un { flex: none; max-width: 45%; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 6px; background: var(--paper); color: var(--c-events); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sci-lhead .un.none { color: var(--c-leave); font-weight: 500; }
+  .sci-ledit { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .sci-ledit label { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
+  .sci-ledit textarea { font: inherit; font-size: var(--fs-sm); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; background: var(--paper); color: var(--ink); resize: vertical; }
+  .sci-ledit .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sci-ledit .acts button { border: 1px solid color-mix(in oklch, var(--task) 40%, var(--mixbase)); background: var(--paper); color: var(--task); font-size: var(--fs-xs); font-weight: 600; border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+  .sci-ledit .acts button.go { color: var(--c-events); border-color: color-mix(in oklch, var(--c-events) 40%, var(--mixbase)); }
+  .sci-row { display: flex; align-items: stretch; }
+  .sci-row .doc-head { flex: 1; min-width: 0; }
+  .sci-pick { flex: none; border: 0; border-left: 1px solid var(--line); background: color-mix(in oklch, var(--c-events) 10%, var(--mixbase)); color: var(--c-events); font-size: var(--fs-xs); font-weight: 700; padding: 0 10px; cursor: pointer; }
+  .sci-pick.sug { background: var(--c-events); color: #fff; }
   .sci-link {
     display: inline-block; margin-top: 3px; border: 1px solid color-mix(in oklch, var(--c-events) 40%, var(--mixbase));
     background: var(--paper); color: var(--c-events); font-size: 10px; font-weight: 600;
@@ -2212,6 +2245,19 @@ var Store = {
       ] });
     }, 500);
   },
+  getScienceLessons: function (done, fail) {
+    if (IS_GAS) {
+      google.script.run.withSuccessHandler(done).withFailureHandler(fail).getScienceLessons();
+      return;
+    }
+    setTimeout(function () {
+      if (MOCK_FAIL) { fail(new Error('mock failure')); return; }
+      var t = realToday();
+      function L(id, d, p, seq, unit, sum) { return { id: id, name: '理科【1年】' + p, date: d, time: null, periodLabels: [p + '校時'], grade: '1年', summary: sum || '', memo: '', seq: seq, unitId: unit }; }
+      done({ today: t, lessons: [L('l1', addDays(t, -7), 3, 1, 'm1', '物質と物体'), L('l2', addDays(t, 1), 2, null, null, ''), L('l3', addDays(t, 3), 4, null, null, ''), L('l4', addDays(t, 8), 1, null, null, '')] });
+    }, 500);
+  },
+  setLessonSeqs: function (items, done) { enqueueWrite('setLessonSeqs', [items], done); },
   updateUnitPlan: function (id, patch) { enqueueWrite('updateUnitPlan', [id, patch]); },
   getScienceUnitDetail: function (id, done, fail) {
     if (IS_GAS) {
@@ -2472,6 +2518,11 @@ var state = {
   science: null,       /* Science タブ: {units, today, next} | null(未取得)。タブに入るたび取り直す */
   sciGrade: null,      /* Science タブ: 表示中の学年 '1年'|'2年'|'3年' */
   sciGroup: null,      /* Science タブ: 開いている単元グループ（学年|単元名） */
+  sciLessons: null,    /* Science 左ペイン: 今年度の理科の授業（ナギレンダー）| null(未取得)。タブに入るたび取り直す */
+  sciLessonsError: '',
+  sciSel: null,        /* 左ペインで選んでいる授業（ナギレンダーのページID）。右の本時の「← 紐づけ」の対象 */
+  sciPane: 'lessons',  /* 狭い画面で見ているペイン: lessons | units */
+  sciPast: false,      /* 左ペイン: 1週間より前の授業も出す */
   sciFocus: null,      /* 理科授業カードの「単元計画 ↗」から来たときの対象（単元計画DBのページID）。初期表示で1回だけ使う */
   sciOpenId: null,     /* Science タブ: 展開中の本時（単元計画DBのページID） */
   sciDetail: {},       /* 展開時だけ取る関連ページ名 {id: detail|null(読み込み中)|'error'} */
@@ -3336,6 +3387,7 @@ function sciLinkBtn(rec) {
 function openScienceUnit(unitId) {
   state.mode = 'science';
   state.science = null; state.sciError = ''; state.sciDetail = {};
+  state.sciLessons = null; state.sciLessonsError = ''; state.sciSel = null;
   state.sciFocus = unitId;
   window.scrollTo(0, 0);
   withTransition(refresh);
@@ -5994,7 +6046,22 @@ function sciLessonItem(u) {
     state.sciOpenId = state.sciOpenId === u.id ? null : u.id;
     renderScienceTab();
   });
-  item.appendChild(head);
+  var selL = state.sciSel && state.sciLessons ? state.sciLessons.filter(function (x) { return x.id === state.sciSel; })[0] : null;
+  if (selL) {                                         /* 左で授業を選んでいる間は、各本時に「← 紐づけ」を出す */
+    var row0 = el('div', 'sci-row');
+    row0.appendChild(head);
+    var sgU = selL.unitId ? null : sciSuggest(selL);
+    var isCur = selL.unitId && sciNorm(selL.unitId) === sciNorm(u.id);
+    if (!isCur) {
+      var pk = el('button', 'sci-pick' + (sgU && sgU.id === u.id ? ' sug' : ''), '← 紐づけ');
+      pk.type = 'button';
+      pk.addEventListener('click', function () { sciLink(selL, u.id); });
+      row0.appendChild(pk);
+    }
+    item.appendChild(row0);
+  } else {
+    item.appendChild(head);
+  }
 
   if (state.sciOpenId === u.id) {
     var dt = el('div', 'doc-detail');
@@ -6078,6 +6145,176 @@ function sciLessonItem(u) {
   return item;
 }
 
+/* ---- 左ペイン（ナギレンダーの理科の授業）。2026-10-02 ---- */
+function sciNorm(id) { return String(id || '').replace(/-/g, ''); }
+function sciUnitById(id) {
+  var n = sciNorm(id);
+  return state.science.units.filter(function (u) { return sciNorm(u.id) === n; })[0] || null;
+}
+function sciLessonSort(a, b) {
+  var ak = a.date + ' ' + (a.time || ''), bk = b.date + ' ' + (b.time || '');
+  if (ak !== bk) return ak < bk ? -1 : 1;
+  var ap = (a.periodLabels[0] || ''), bp = (b.periodLabels[0] || '');
+  return ap < bp ? -1 : (ap > bp ? 1 : 0);
+}
+/* 授業数 = 学年ごとの通し番号（日付順で今年度の何コマ目か）。手で振らず、数えて出す */
+function sciComputeSeq() {
+  var by = {};
+  state.sciLessons.forEach(function (l) { (by[l.grade] = by[l.grade] || []).push(l); });
+  Object.keys(by).forEach(function (g) {
+    by[g].sort(sciLessonSort).forEach(function (l, i) { l.cseq = i + 1; });
+  });
+}
+/* 単元計画側の「実施日」は左の授業から組み直す（紐づけを変えたとき画面だけ先に更新するため） */
+function sciRebuildUnitLessons() {
+  if (!state.science || !state.sciLessons) return;
+  state.science.units.forEach(function (u) { u.lessons = []; });
+  state.sciLessons.slice().sort(sciLessonSort).forEach(function (l) {
+    var u = l.unitId ? sciUnitById(l.unitId) : null;
+    if (u) u.lessons.push({ id: l.id, date: l.date, time: l.time, periodLabels: l.periodLabels });
+  });
+  sciComputeSeq();
+}
+function sciPlanOrder(grade) {
+  var out = [];
+  sciGroups(grade).forEach(function (g) { g.lessons.forEach(function (u) { out.push(u); }); });
+  return out;
+}
+/* 次に紐づける本時の提案: 直前の授業が紐づく本時の「次」の、まだどの授業にも紐づいていない本時 */
+function sciSuggest(lesson) {
+  var P = sciPlanOrder(lesson.grade);
+  if (!P.length) return null;
+  var linked = {};
+  state.sciLessons.forEach(function (l) { if (l.unitId && l.id !== lesson.id) linked[sciNorm(l.unitId)] = true; });
+  var prev = null;
+  state.sciLessons.filter(function (l) { return l.grade === lesson.grade && l.unitId && sciLessonSort(l, lesson) < 0; })
+    .sort(sciLessonSort).forEach(function (l) { prev = l; });
+  var start = 0;
+  if (prev) {
+    var pu = sciUnitById(prev.unitId);
+    var pi = pu ? P.indexOf(pu) : -1;
+    start = pi >= 0 ? pi + 1 : 0;
+  }
+  for (var i = start; i < P.length; i++) {
+    if (linked[sciNorm(P[i].id)]) continue;
+    if (!prev && P[i].status === 'Done') continue;
+    return P[i];
+  }
+  return null;
+}
+function sciSelectLesson(id) {
+  state.sciSel = state.sciSel === id ? null : id;
+  var l = state.sciSel ? state.sciLessons.filter(function (x) { return x.id === id; })[0] : null;
+  if (l) {
+    var u = l.unitId ? sciUnitById(l.unitId) : sciSuggest(l);
+    if (u) { state.sciGroup = sciGroupKey(u); if (l.unitId) state.sciOpenId = u.id; }
+  }
+  renderScienceTab();
+}
+function sciLink(lesson, unitId) {
+  var prev = lesson.unitId;
+  function apply(uid) {
+    lesson.unitId = uid;
+    sciRebuildUnitLessons();
+    Store.updateLesson(lesson.id, { unitId: uid || null });
+  }
+  apply(unitId);
+  var u = sciUnitById(unitId);
+  showToast((u ? '「' + (u.name || '本時') + '」に紐づけました' : '紐づけを外しました'), function () { apply(prev || null); renderScienceTab(); });
+  if (unitId) {                                    /* 続けて次の未紐づけの授業へ（順に振っていく流れ） */
+    var next = state.sciLessons.filter(function (x) { return x.grade === lesson.grade && !x.unitId && sciLessonSort(x, lesson) > 0; }).sort(sciLessonSort)[0];
+    if (next) { state.sciSel = null; sciSelectLesson(next.id); return; }
+  }
+  renderScienceTab();
+}
+function sciLessonRow(l) {
+  var today = state.science.today;
+  var sel = state.sciSel === l.id;
+  var row = el('div', 'sci-lrow' + (sel ? ' sel' : '') + (l.date < today ? ' past' : ''));
+  var head = el('button', 'sci-lhead');
+  head.type = 'button';
+  var diff = l.seq !== l.cseq;
+  var sq = el('span', 'sq' + (diff ? ' diff' : ''), String(l.cseq));
+  if (diff) sq.title = 'Notion の授業数: ' + (l.seq == null ? '未入力' : l.seq);
+  head.appendChild(sq);
+  head.appendChild(el('span', 'dt', mdw(l.date) + (l.periodLabels.length ? ' ' + l.periodLabels[0].replace('校時', '限') : '')));
+  head.appendChild(el('span', 'tn', l.name || '(無題)'));
+  var u = l.unitId ? sciUnitById(l.unitId) : null;
+  head.appendChild(el('span', 'un' + (u ? '' : ' none'), u ? ((u.hour != null ? u.hour + '. ' : '') + (u.name || '本時')) : '未紐づけ'));
+  head.addEventListener('click', function () { sciSelectLesson(l.id); });
+  row.appendChild(head);
+
+  if (sel) {
+    var ed = el('div', 'sci-ledit');
+    function field(label, key, rows) {
+      ed.appendChild(el('label', null, label));
+      var ta = document.createElement('textarea');
+      ta.rows = rows; ta.value = l[key] || '';
+      ta.addEventListener('blur', function () {
+        if (ta.value === (l[key] || '')) return;
+        l[key] = ta.value;
+        var d = {}; d[key] = ta.value;
+        Store.updateLesson(l.id, d);
+        showToast(label + 'を保存しました');
+      });
+      ed.appendChild(ta);
+    }
+    field('概要', 'summary', 2);
+    field('詳細メモ', 'memo', 3);
+    var acts = el('div', 'acts');
+    var sg = l.unitId ? null : sciSuggest(l);
+    if (sg) {
+      var go = el('button', 'go', '次の本時に紐づけ ▶ ' + (sg.hour != null ? sg.hour + '. ' : '') + (sg.name || ''));
+      go.type = 'button';
+      go.addEventListener('click', function () { sciLink(l, sg.id); });
+      acts.appendChild(go);
+    }
+    if (l.unitId) {
+      var un = el('button', null, '紐づけを外す');
+      un.type = 'button';
+      un.addEventListener('click', function () { sciLink(l, null); });
+      acts.appendChild(un);
+    }
+    if (acts.children.length) ed.appendChild(acts);
+    row.appendChild(ed);
+  }
+  return row;
+}
+function sciLeftPane() {
+  var pane = el('div', 'sci-left');
+  if (state.sciLessonsError) { pane.appendChild(el('div', 'stateband', '授業の取得に失敗しました。（' + state.sciLessonsError + '）')); return pane; }
+  if (!state.sciLessons) { pane.appendChild(el('div', 'stateband', '授業を読み込み中…')); return pane; }
+  var today = state.science.today, cut = addDays(today, -7);
+  var all = state.sciLessons.filter(function (l) { return l.grade === state.sciGrade; }).sort(sciLessonSort);
+  var list = state.sciPast ? all : all.filter(function (l) { return l.date >= cut; });
+
+  var lh = el('div', 'sci-lh');
+  lh.appendChild(el('span', null, state.sciGrade + ' の理科 ' + list.length + (state.sciPast ? '' : '/' + all.length) + 'コマ'));
+  var tg = el('button', null, state.sciPast ? '過去を隠す' : '過去も見る');
+  tg.type = 'button';
+  tg.addEventListener('click', function () { state.sciPast = !state.sciPast; renderScienceTab(); });
+  lh.appendChild(tg);
+  var diffs = all.filter(function (l) { return l.seq !== l.cseq; });
+  if (diffs.length) {
+    var sy = el('button', null, '授業数を Notion に反映（' + diffs.length + '件）');
+    sy.type = 'button';
+    sy.addEventListener('click', function () {
+      sy.disabled = true; sy.textContent = '反映中…';
+      var items = diffs.map(function (l) { return { id: l.id, seq: l.cseq }; });
+      Store.setLessonSeqs(items, function () {
+        diffs.forEach(function (l) { l.seq = l.cseq; });
+        showToast('授業数を ' + items.length + '件 反映しました');
+        if (state.mode === 'science') renderScienceTab();
+      });
+    });
+    lh.appendChild(sy);
+  }
+  pane.appendChild(lh);
+  if (!list.length) pane.appendChild(el('div', 'doc-empty', '表示する授業がありません'));
+  list.forEach(function (l) { pane.appendChild(sciLessonRow(l)); });
+  return pane;
+}
+
 function renderScienceTab() {
   var root = $('#science-root');
   root.textContent = '';
@@ -6107,7 +6344,22 @@ function renderScienceTab() {
     return;
   }
 
-  /* 学年切替 */
+  /* 今年度の授業（左ペイン）は単元計画とは別に取る（失敗しても右は使える） */
+  if (!state.sciLessons && !state.sciLessonsError && !renderScienceTab._lloading) {
+    renderScienceTab._lloading = true;
+    Store.getScienceLessons(function (res) {
+      renderScienceTab._lloading = false;
+      state.sciLessons = (res && res.lessons) || [];
+      sciRebuildUnitLessons();
+      if (state.mode === 'science') renderScienceTab();
+    }, function (e) {
+      renderScienceTab._lloading = false;
+      state.sciLessonsError = (e && e.message) ? String(e.message).slice(0, 120) : '通信エラー';
+      if (state.mode === 'science') renderScienceTab();
+    });
+  }
+
+  /* 学年切替（＋狭い画面では 授業／単元 の切替） */
   var head = el('div', 'task-head');
   var seg = el('div', 'seg');
   seg.setAttribute('role', 'tablist');
@@ -6120,16 +6372,32 @@ function renderScienceTab() {
       state.sciGrade = g;
       state.sciGroup = sciFirstOpenGroup(g);
       state.sciOpenId = null;
+      state.sciSel = null;
       try { localStorage.setItem('dc.sciGrade', g); } catch (e) {}
       withTransition(renderScienceTab);
     });
     seg.appendChild(b);
   });
   head.appendChild(seg);
+  var pt = el('div', 'seg sci-panetoggle');
+  [['lessons', '授業'], ['units', '単元']].forEach(function (pr) {
+    var b = el('button', null, pr[1]);
+    b.setAttribute('aria-selected', String(state.sciPane === pr[0]));
+    b.addEventListener('click', function () { state.sciPane = pr[0]; renderScienceTab(); });
+    pt.appendChild(b);
+  });
+  head.appendChild(pt);
   root.appendChild(head);
 
+  var cols = el('div', 'sci-cols');
+  cols.dataset.pane = state.sciPane;
+  cols.appendChild(sciLeftPane());
+  var right = el('div', 'sci-right');
+  cols.appendChild(right);
+  root.appendChild(cols);
+
   var groups = sciGroups(state.sciGrade);
-  if (!groups.length) { root.appendChild(el('div', 'doc-empty', 'この学年の単元計画はまだありません')); return; }
+  if (!groups.length) { right.appendChild(el('div', 'doc-empty', 'この学年の単元計画はまだありません')); return; }
 
   groups.forEach(function (g) {
     var open = state.sciGroup === g.key;
@@ -6149,11 +6417,11 @@ function renderScienceTab() {
       if (open) state.sciOpenId = null;
       renderScienceTab();
     });
-    root.appendChild(gh);
+    right.appendChild(gh);
     if (open) {
       var body = el('div', 'sci-body');
       g.lessons.forEach(function (u) { body.appendChild(sciLessonItem(u)); });
-      root.appendChild(body);
+      right.appendChild(body);
     }
   });
 }
@@ -6292,7 +6560,7 @@ $('#tabs').addEventListener('click', function (e) {
   if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
   if (state.mode === 'often') { state.docs = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; }  /* 〃 */
-  if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; }  /* 〃 */
+  if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; state.sciLessons = null; state.sciLessonsError = ''; state.sciSel = null; }  /* 〃 */
   withTransition(refresh);
 });
 

@@ -64,7 +64,7 @@ const BODY_MAX_BLOCKS = 200;
 
 /* 画面から呼んでよい関数（これ以外は 404） */
 const PUBLIC_FNS = [
-  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'updateUnitPlan', 'getProjects', 'getProjectBody',
+  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody',
   'updateLesson', 'createLesson', 'deleteLesson',
   'getDocs', 'searchDocs', 'updateDoc',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
@@ -844,6 +844,33 @@ function createApi(env) {
       };
     },
 
+    /* 理科タブ左ペイン: 今年度（4/1〜）の理科の授業（ナギレンダー）。「関係なし」は除く。授業数は保存値をそのまま返す（通し番号は画面で数える） */
+    async getScienceLessons() {
+      await warmApiMode_();
+      const today = todayJst_();
+      const fyStart = (+today.slice(5, 7) >= 4 ? today.slice(0, 4) : String(+today.slice(0, 4) - 1)) + '-04-01';
+      const rows = await queryAll_('nagi', {
+        filter: { and: [
+          { property: '種別', select: { equals: '理科' } },
+          { property: '日付', date: { on_or_after: fyStart } }
+        ] },
+        sorts: [{ property: '日付', direction: 'ascending' }]
+      });
+      const lessons = [];
+      rows.forEach(pg => {
+        const l = mapLesson_(pg);
+        if (!l || l.excluded) return;
+        const unit = l.relations.filter(r => r.kind === '単元計画')[0];
+        lessons.push({
+          id: l.id, name: l.name, date: l.date, time: l.time, periodLabels: l.periodLabels,
+          grade: normGrade_(l.grade), summary: l.summary, memo: l.memo,
+          seq: propNumber_((pg.properties || {})['授業数']),
+          unitId: unit ? unit.id : null
+        });
+      });
+      return { lessons, today };
+    },
+
     /* 本時を展開したときだけ呼ぶ。関連ページ名と Notion リンク、ワークシートのファイル名（URL は短命なので返さない） */
     async getScienceUnitDetail(pageId) {
       const pg = await fetchPageOf_(pageId, 'sciunit', '理科単元計画のページ');
@@ -912,8 +939,32 @@ function createApi(env) {
       const pg = await fetchPageOf_(lessonId, 'nagi', 'ナギレンダーのコマ');
       const existing = (pg.properties && pg.properties['日付'] && pg.properties['日付'].date) || null;
       const existingPeriods = propMulti_(pg.properties && pg.properties['時限']);
-      await patchPage_(lessonId, { properties: lessonProps_(data || {}, existing, existingPeriods) }, 'コマの保存に失敗しました');
+      data = data || {};
+      const props = lessonProps_(data, existing, existingPeriods);
+      /* 理科タブ用（2026-10-02）: 授業数（学年ごとの通し番号）と、理科単元計画への紐づけ（1コマ1本時。null で解除） */
+      if ('seq' in data) props['授業数'] = { number: data.seq == null ? null : Number(data.seq) };
+      if ('unitId' in data) {
+        if (data.unitId) {
+          await fetchPageOf_(data.unitId, 'sciunit', '理科単元計画のページ');
+          props['理科単元計画'] = { relation: [{ id: data.unitId }] };
+        } else {
+          props['理科単元計画'] = { relation: [] };
+        }
+      }
+      await patchPage_(lessonId, { properties: props }, 'コマの保存に失敗しました');
       return { ok: true };
+    },
+
+    /* 授業数の一括反映。items: [{id, seq}]。ナギレンダーのコマ以外は拒否。順番に書く（Notion のレート制限対策） */
+    async setLessonSeqs(items) {
+      items = (items || []).slice(0, 120);
+      let n = 0;
+      for (const it of items) {
+        await fetchPageOf_(it.id, 'nagi', 'ナギレンダーのコマ');
+        await patchPage_(it.id, { properties: { '授業数': { number: it.seq == null ? null : Number(it.seq) } } }, '授業数の保存に失敗しました');
+        n++;
+      }
+      return { ok: true, count: n };
     },
 
     async createLesson(data) {

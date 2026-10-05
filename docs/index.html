@@ -919,6 +919,14 @@
     background: var(--paper); color: var(--c-events); font-size: 10px; font-weight: 600;
     border-radius: 999px; padding: 1px 8px; cursor: pointer; line-height: 1.5;
   }
+  /* 授業・行事カード上の関連リンク（書類・プロジェクト・道徳。2026-10-05）。クリックで Notion の該当ページへ */
+  .rel-link {
+    display: inline-block; margin: 3px 4px 0 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    vertical-align: top; border: 1px solid color-mix(in oklch, var(--ink-3) 40%, var(--mixbase));
+    background: var(--paper); color: var(--ink-2); font-size: 10px; font-weight: 600; text-decoration: none;
+    border-radius: 999px; padding: 1px 8px; line-height: 1.5;
+  }
+  .rel-link:hover { color: var(--c-events); border-color: var(--c-events); }
   .sci-lesson .doc-head .hr { flex: none; width: 1.6em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; }
   .sci-lesson.done .doc-head .tn { color: var(--ink-3); }
   .sci-badge { flex: none; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 6px; background: var(--paper); color: var(--ink-2); font-variant-numeric: tabular-nums; }
@@ -3394,6 +3402,23 @@ function sciLinkBtn(rec) {
   b.title = 'Science タブでこの本時を開く';
   return b;
 }
+/* 単元計画以外の関連（書類・プロジェクト・道徳）を、カード上のリンクにして Notion へ直接飛べるようにする */
+var CARD_REL_KINDS = { '書類': 1, 'プロジェクト': 1, '道徳': 1 };
+function relLinkEls(rec) {
+  var out = [];
+  (rec.relations || []).forEach(function (r) {
+    if (!CARD_REL_KINDS[r.kind]) return;
+    var meta = (state.relationTitles && state.relationTitles[r.id]) || null;
+    var a = document.createElement('a');
+    a.className = 'rel-link';
+    a.href = (meta && meta.url) || ('https://www.notion.so/' + String(r.id).replace(/-/g, ''));
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = r.kind + ' ↗';
+    a.title = (meta && meta.title) ? (r.kind + ': ' + meta.title + '（Notion で開く）') : (r.kind + ' を Notion で開く');
+    out.push(a);
+  });
+  return out;
+}
 function openScienceUnit(unitId) {
   state.mode = 'science';
   state.science = null; state.sciError = ''; state.sciDetail = {};
@@ -3428,6 +3453,7 @@ function lessonCard(rec, run) {
   }
   var sl = sciLinkBtn(rec);
   if (sl) c.appendChild(sl);
+  relLinkEls(rec).forEach(function (a) { c.appendChild(a); });
   var tip = [rec.name, subTxt,
              rec.memo || '',
              rec.feedback ? '振り返り: ' + rec.feedback : ''].filter(Boolean).join('\n');
@@ -5154,7 +5180,7 @@ $('#grid').addEventListener('click', function (e) {
 
 /* ---- グリッド上のカード（タスク・授業）をドラッグして別のコマへ ---- */
 $('#grid').addEventListener('pointerdown', function (e) {
-  if (e.target.closest('.ck, .sci-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
+  if (e.target.closest('.ck, .sci-link, .rel-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
   var card = e.target.closest('.taskcard, .lesson');
   if (!card || !state.week) return;
   var isTask = card.classList.contains('taskcard');
@@ -5803,6 +5829,7 @@ var suppressLessonClick = false;
 document.addEventListener('click', function (e) {
   var sl = e.target.closest('.sci-link');            /* 「単元計画 ↗」はカード編集を開かず Science タブへ */
   if (sl && sl.dataset.unit) { openScienceUnit(sl.dataset.unit); return; }
+  if (e.target.closest('.rel-link')) return;         /* 関連リンクはブラウザの既定動作（新しいタブで Notion）に任せる */
   if (suppressLessonClick) return;
   var card = e.target.closest('.lesson');
   if (!card || !card.dataset.lid) return;

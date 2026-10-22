@@ -223,11 +223,11 @@ try {
   [data-theme="quest"] {
     color-scheme: dark;
     --gold: #FFD966; --ink: #FFFFFF; --ink-2: #E6EEFF; --ink-3: #BCCBF5;
-    --paper: #8CCBF5; --card: #14308F; --line: rgba(255,255,255,.7);
+    --paper: #8CCBF5; --card: #2E62CC; --line: rgba(255,255,255,.7);
     --c-events: #8FE0FF; --c-trip: #FFC27A; --c-leave: #FF9FB0; --c-roster: #D2B8FF;
     --sch-higashi: #FFA48C; --sch-meisei: #6FE8C4; --sch-kenritsu: #CBD6E8;
     --g-1: #A6EE80; --g-2: #6FE8CC; --g-3: #8CC4FF; --g-tobi: #FFE680;
-    --task: #FFD966; --task-soft: #0F2478;
+    --task: #FFD966; --task-soft: #2552B8;
     --shadow: 0 8px 22px -8px rgba(0,20,90,.65), inset 0 0 0 1px rgba(255,255,255,.28);
     --radius: 14px; --radius-sm: 8px; --mixbase: var(--card);
     --font: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Zen Maru Gothic", sans-serif;
@@ -1548,21 +1548,25 @@ try {
 
   /* 区画（カード・タスク欄・帯）をテーマの「窓」に */
   [data-theme="quest"] .card, [data-theme="quest"] .tabbar, [data-theme="quest"] .taskpicker, [data-theme="quest"] .toast,
-  [data-theme="quest"] .week-side > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section {
-    background: linear-gradient(180deg, #2B55D4 0%, #17359C 42%, #0E256F 100%);
-    border: 2px solid rgba(255,255,255,.92); border-radius: var(--radius); box-shadow: var(--shadow);
+  [data-theme="quest"] .week-side > section, [data-theme="quest"] .week-main > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section {
+    background: linear-gradient(180deg, rgba(74,132,236,.93) 0%, rgba(46,98,204,.94) 55%, rgba(36,80,176,.95) 100%);
+    backdrop-filter: blur(6px);
+    border: 2px solid rgba(255,255,255,.95); border-radius: var(--radius); box-shadow: var(--shadow);
   }
-  [data-theme="quest"] .week-side > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
+  [data-theme="quest"] .week-side > section, [data-theme="quest"] .week-main > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
   [data-theme="quest"] .top .brand { font-weight: 700; letter-spacing: .08em; color: #fff; text-shadow: 0 2px 0 #0E256F, 0 0 14px rgba(255,255,255,.5); font-size: 24px; }
   [data-theme="quest"] .day-nav, [data-theme="quest"] .headdaynav { text-shadow: 0 1px 3px rgba(0,30,110,.8); }
   [data-theme="quest"] .sec-h { color: #FFE9A6; font-weight: 700; letter-spacing: .08em; }
   [data-theme="quest"] .tabbar button[aria-selected="true"] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
   [data-theme="quest"] .titem.doing::before, [data-theme="quest"] .titem:hover::before { content: "▶"; color: #FFE9A6; margin-right: 2px; text-shadow: 0 0 8px rgba(255,233,166,.9); }
   [data-theme="quest"] .titem { border-color: rgba(255,255,255,.22); }
-  [data-theme="quest"] .chip { border: 1.5px solid rgba(255,255,255,.8); border-radius: 999px; background: rgba(8,24,90,.45); }
-  [data-theme="quest"] .titem .asg { background: rgba(8,24,90,.5); color: #fff; border-color: rgba(255,255,255,.7); }
+  [data-theme="quest"] .chip { border: 1.5px solid rgba(255,255,255,.85); border-radius: 999px; background: rgba(255,255,255,.16); }
+  [data-theme="quest"] .titem .asg { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.7); }
+  [data-theme="quest"] .titem .act { background: rgba(255,255,255,.2); color: #fff; border: 1px solid rgba(255,255,255,.75); }
+  [data-theme="quest"] .titem .act.start { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; border-color: #FFE9A6; font-weight: 700; }
+  [data-theme="quest"] .titem .act svg { color: #fff; }
   [data-theme="quest"] .titem.ai-task { border-left-color: #D2B8FF; }
-  [data-theme="quest"] .quickadd input { background: rgba(8,24,90,.45); color: #fff; }
+  [data-theme="quest"] .quickadd input { background: rgba(255,255,255,.18); color: #fff; }
   [data-theme="quest"] .quickadd button[type=submit] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
 
   [data-theme="journey"] .card, [data-theme="journey"] .tabbar, [data-theme="journey"] .taskpicker,

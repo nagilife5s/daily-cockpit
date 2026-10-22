@@ -8,10 +8,14 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=DotGothic16&family=Noto+Serif+JP:wght@400;500&family=Cormorant+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
-/* 見た目テーマ（2026-10-23）。最初の描画前に反映してちらつかせない。''=いつもの / dq / ff */
-try { var __t = localStorage.getItem('dc.theme'); if (__t === 'dq' || __t === 'ff') document.documentElement.dataset.theme = __t; } catch (e) {}
+/* 見た目テーマ（2026-10-23）。最初の描画前に反映してちらつかせない。無し=Washi / quest / journey / cockpit */
+try {
+  var __t = localStorage.getItem('dc.theme');
+  if (__t === 'dq') __t = 'quest'; else if (__t === 'ff') __t = 'journey';   /* 旧名の読み替え */
+  if (__t === 'quest' || __t === 'journey' || __t === 'cockpit') document.documentElement.dataset.theme = __t;
+} catch (e) {}
 </script>
 
 <!--
@@ -210,33 +214,45 @@ try { var __t = localStorage.getItem('dc.theme'); if (__t === 'dq' || __t === 'f
     --mixbase: var(--card);
   }
 
-  /* ==== ゲーム風テーマ（2026-10-23）。いつもの見た目は触らず、色・枠・フォントだけを差し替える ====
-     dq = ドラクエ風（黒地・白い二重枠・紺のウィンドウ・ドット文字）/ ff = FF15風（夜空・細い金の線・明朝）
-     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。切替は右上の select（dc.theme に保存） */
-  [data-theme="dq"] #banner, [data-theme="ff"] #banner { display: none; }
-  [data-theme="dq"] {
+  /* ==== 見た目テーマ（2026-10-23）。Washi（標準）は属性なし。色・枠・フォントだけを差し替える ====
+     quest   = 近年のRPGの青いコマンドウィンドウ（明るい空と丘の背景）
+     journey = 旅のロードトリップ風。明るい磨りガラスのパネル
+     cockpit = 計器盤。明るい地に琥珀とティールの表示
+     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */
+  [data-theme="quest"] #banner, [data-theme="journey"] #banner, [data-theme="cockpit"] #banner { display: none; }
+  [data-theme="quest"] {
     color-scheme: dark;
-    --gold: #FFE34D; --ink: #FFFFFF; --ink-2: #E3E9FF; --ink-3: #B8C4FF;
-    --paper: #000000; --card: #00006B; --line: #FFFFFF;
-    --c-events: #7FD6FF; --c-trip: #FFB86B; --c-leave: #FF8FA3; --c-roster: #C9A8FF;
-    --sch-higashi: #FF9A80; --sch-meisei: #5FE0B8; --sch-kenritsu: #C4D0E0;
-    --g-1: #9BE070; --g-2: #5FE0C0; --g-3: #7FB8FF; --g-tobi: #FFE34D;
-    --task: #FFE34D; --task-soft: #00004A;
-    --shadow: inset 0 0 0 2px #00006B, inset 0 0 0 4px #FFFFFF;
-    --radius: 5px; --radius-sm: 2px; --mixbase: var(--card);
-    --font: "DotGothic16", "Hiragino Kaku Gothic ProN", monospace; --font-brush: "DotGothic16", monospace;
+    --gold: #FFD966; --ink: #FFFFFF; --ink-2: #E6EEFF; --ink-3: #BCCBF5;
+    --paper: #8CCBF5; --card: #14308F; --line: rgba(255,255,255,.7);
+    --c-events: #8FE0FF; --c-trip: #FFC27A; --c-leave: #FF9FB0; --c-roster: #D2B8FF;
+    --sch-higashi: #FFA48C; --sch-meisei: #6FE8C4; --sch-kenritsu: #CBD6E8;
+    --g-1: #A6EE80; --g-2: #6FE8CC; --g-3: #8CC4FF; --g-tobi: #FFE680;
+    --task: #FFD966; --task-soft: #0F2478;
+    --shadow: 0 8px 22px -8px rgba(0,20,90,.65), inset 0 0 0 1px rgba(255,255,255,.28);
+    --radius: 14px; --radius-sm: 8px; --mixbase: var(--card);
+    --font: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Zen Maru Gothic", sans-serif;
   }
-  [data-theme="ff"] {
-    color-scheme: dark;
-    --gold: #D9B86B; --ink: #E8EDF4; --ink-2: #B9C6D6; --ink-3: #8FA1B6;
-    --paper: #0A111C; --card: #101A2A; --line: rgba(190,205,225,.28);
-    --c-events: #7EC8E3; --c-trip: #E0A85A; --c-leave: #E07A90; --c-roster: #B49BE0;
-    --sch-higashi: #E88A6E; --sch-meisei: #5CCBA8; --sch-kenritsu: #9FB0C0;
-    --g-1: #8CC07A; --g-2: #6CC4B0; --g-3: #6AAED6; --g-tobi: #C4B86A;
-    --task: #D9B86B; --task-soft: #2A2618;
-    --shadow: 0 10px 30px -14px #000;
-    --radius: 2px; --radius-sm: 1px; --mixbase: var(--card);
-    --font: "Noto Serif JP", "Hiragino Mincho ProN", serif; --font-brush: "Cormorant Garamond", "Noto Serif JP", serif;
+  [data-theme="journey"] {
+    --gold: #B58B3C; --ink: #1C2733; --ink-2: #44566A; --ink-3: #62758A;
+    --paper: #DCE8F2; --card: #F8FBFE; --line: rgba(60,90,125,.26);
+    --c-events: #2A78AA; --c-trip: #B8731F; --c-leave: #BE4B66; --c-roster: #7660B4;
+    --sch-higashi: #C1503A; --sch-meisei: #1F8A72; --sch-kenritsu: #4B5A67;
+    --g-1: #5E9444; --g-2: #3F928A; --g-3: #3F79A8; --g-tobi: #A08A3C;
+    --task: #A6802E; --task-soft: #F6EFDC;
+    --shadow: 0 10px 28px -14px rgba(40,70,110,.45);
+    --radius: 3px; --radius-sm: 2px;
+    --font: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Rajdhani", "Noto Sans JP", sans-serif;
+  }
+  [data-theme="cockpit"] {
+    --gold: #D98300; --ink: #14262B; --ink-2: #3A5158; --ink-3: #5A7279;
+    --paper: #E4EDF0; --card: #FDFEFE; --line: #B1C4CA;
+    --c-events: #0E8A76; --c-trip: #C27000; --c-leave: #C23B50; --c-roster: #5560BE;
+    --sch-higashi: #C1503A; --sch-meisei: #1F8A72; --sch-kenritsu: #4B5A67;
+    --g-1: #5E9444; --g-2: #1F8F80; --g-3: #3A78A8; --g-tobi: #A08A3C;
+    --task: #D98300; --task-soft: #FFF3DC;
+    --shadow: 0 1px 0 #fff inset, 0 8px 20px -14px rgba(20,60,70,.45);
+    --radius: 2px; --radius-sm: 1px;
+    --font: "Share Tech Mono", "Noto Sans JP", monospace; --font-brush: "Rajdhani", "Noto Sans JP", sans-serif;
   }
 }
 
@@ -1514,49 +1530,64 @@ try { var __t = localStorage.getItem('dc.theme'); if (__t === 'dq' || __t === 'f
 }
 
 /* ==========================================================================
-   ゲーム風テーマの装飾（2026-10-23）。色は tokens 層の変数で済むので、ここは枠・背景・見出しだけ。
-   最後に置いて、いつもの見た目（属性なし）には一切効かない
+   見た目テーマの装飾（2026-10-23）。色は tokens 層の変数で済むので、ここは枠・背景・見出しだけ。
+   最後に置いて、Washi（属性なし）には一切効かない
    ========================================================================== */
 @layer state {
   .themesel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
-  /* セクション（タスク列・帯）もウィンドウに見せる */
-  [data-theme="dq"] .week-side > section, [data-theme="dq"] #pane-pc > section, [data-theme="dq"] #pane-sp > section,
-  [data-theme="ff"] .week-side > section, [data-theme="ff"] #pane-pc > section, [data-theme="ff"] #pane-sp > section {
-    background: var(--card); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 10px;
+  [data-theme="quest"] body   { background: url(themes/bg-quest.jpg) center / cover no-repeat fixed, url(themes/bg-quest.svg) center / cover no-repeat fixed, #8CCBF5; }
+  [data-theme="journey"] body { background: url(themes/bg-journey.jpg) center / cover no-repeat fixed, url(themes/bg-journey.svg) center / cover no-repeat fixed, #DCE8F2; }
+  [data-theme="cockpit"] body { background: url(themes/bg-cockpit.jpg) center / cover no-repeat fixed, url(themes/bg-cockpit.svg) center / cover no-repeat fixed, #E4EDF0; }
+
+  /* 区画（カード・タスク欄・帯）をテーマの「窓」に */
+  [data-theme="quest"] .card, [data-theme="quest"] .tabbar, [data-theme="quest"] .taskpicker, [data-theme="quest"] .toast,
+  [data-theme="quest"] .week-side > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section {
+    background: linear-gradient(180deg, #2B55D4 0%, #17359C 42%, #0E256F 100%);
+    border: 2px solid rgba(255,255,255,.92); border-radius: var(--radius); box-shadow: var(--shadow);
   }
-  [data-theme="dq"] .week-side > section, [data-theme="dq"] #pane-pc > section, [data-theme="dq"] #pane-sp > section { border: 3px solid #fff; box-shadow: var(--shadow); }
-  [data-theme="ff"] .week-side > section, [data-theme="ff"] #pane-pc > section, [data-theme="ff"] #pane-sp > section { border: 1px solid var(--line); background: rgba(14,22,36,.72); }
-  [data-theme="dq"] .sec-h, [data-theme="ff"] .sec-h { margin-top: 0; }
-  [data-theme="dq"] .quickadd input, [data-theme="ff"] .quickadd input { background: transparent; color: var(--ink); }
-  [data-theme="dq"] .quickadd button[type=submit] { background: #fff; color: #000; border-radius: 2px; }
-  [data-theme="ff"] .quickadd button[type=submit] { background: var(--gold); color: #0A0F18; border-radius: 1px; }
-  /* ---- ドラクエ風: 白い二重枠のウィンドウ ---- */
-  [data-theme="dq"] .card, [data-theme="dq"] .tabbar, [data-theme="dq"] .taskpicker, [data-theme="dq"] .toast {
-    border: 3px solid #fff; background: var(--card);
+  [data-theme="quest"] .week-side > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
+  [data-theme="quest"] .top .brand { font-weight: 700; letter-spacing: .08em; color: #fff; text-shadow: 0 2px 0 #0E256F, 0 0 14px rgba(255,255,255,.5); font-size: 24px; }
+  [data-theme="quest"] .day-nav, [data-theme="quest"] .headdaynav { text-shadow: 0 1px 3px rgba(0,30,110,.8); }
+  [data-theme="quest"] .sec-h { color: #FFE9A6; font-weight: 700; letter-spacing: .08em; }
+  [data-theme="quest"] .tabbar button[aria-selected="true"] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
+  [data-theme="quest"] .titem.doing::before, [data-theme="quest"] .titem:hover::before { content: "▶"; color: #FFE9A6; margin-right: 2px; text-shadow: 0 0 8px rgba(255,233,166,.9); }
+  [data-theme="quest"] .titem { border-color: rgba(255,255,255,.22); }
+  [data-theme="quest"] .chip { border: 1.5px solid rgba(255,255,255,.8); border-radius: 999px; background: rgba(8,24,90,.45); }
+  [data-theme="quest"] .titem .asg { background: rgba(8,24,90,.5); color: #fff; border-color: rgba(255,255,255,.7); }
+  [data-theme="quest"] .titem.ai-task { border-left-color: #D2B8FF; }
+  [data-theme="quest"] .quickadd input { background: rgba(8,24,90,.45); color: #fff; }
+  [data-theme="quest"] .quickadd button[type=submit] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
+
+  [data-theme="journey"] .card, [data-theme="journey"] .tabbar, [data-theme="journey"] .taskpicker,
+  [data-theme="journey"] .week-side > section, [data-theme="journey"] #pane-pc > section, [data-theme="journey"] #pane-sp > section {
+    background: rgba(255,255,255,.74); backdrop-filter: blur(10px) saturate(1.15);
+    border: 1px solid rgba(255,255,255,.95); box-shadow: var(--shadow); border-top: 3px solid #223348;
   }
-  [data-theme="dq"] .tabbar button[aria-selected="true"] { background: #fff; color: #000; }
-  [data-theme="dq"] .top .brand { text-shadow: 2px 2px 0 #0000A8; }
-  [data-theme="dq"] .sec-h { color: #fff; }
-  [data-theme="dq"] .titem { border-color: #fff4; }
-  [data-theme="dq"] .titem.doing::before, [data-theme="dq"] .titem:hover::before { content: "▶"; color: #fff; margin-right: 2px; }
-  [data-theme="dq"] .chip { border: 2px solid #fff; border-radius: 2px; }
-  [data-theme="dq"] button, [data-theme="dq"] input, [data-theme="dq"] select, [data-theme="dq"] textarea { font-family: inherit; }
-  [data-theme="dq"] .titem.ai-task { border-left-color: #C9A8FF; }
-  [data-theme="dq"] .titem .asg { background: #000; color: #fff; border-color: #fff; }
-  /* ---- FF15風: 夜空・半透明の面・細い金の線 ---- */
-  [data-theme="ff"] body { background: radial-gradient(1200px 600px at 75% -10%, #27405F 0, #0E1726 55%, #06090F 100%) fixed, #06090F; }
-  [data-theme="ff"] .card, [data-theme="ff"] .tabbar, [data-theme="ff"] .taskpicker {
-    background: rgba(14,22,36,.72); backdrop-filter: blur(6px);
-    border: 1px solid transparent;
-    border-image: linear-gradient(135deg, rgba(217,184,107,.7), rgba(190,205,225,.15) 40%, rgba(190,205,225,.15) 60%, rgba(217,184,107,.5)) 1;
+  [data-theme="journey"] .week-side > section, [data-theme="journey"] #pane-pc > section, [data-theme="journey"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
+  [data-theme="journey"] .top .brand { font-weight: 700; letter-spacing: .3em; text-transform: uppercase; font-size: 20px; color: #1C2733; }
+  [data-theme="journey"] .sec-h { font-family: var(--font-brush); font-size: 14px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #223348; }
+  [data-theme="journey"] .tabbar { border-top-width: 1px; border-top-color: rgba(255,255,255,.95); }
+  [data-theme="journey"] .tabbar button[aria-selected="true"] { background: linear-gradient(0deg, rgba(34,51,72,.12), transparent); box-shadow: inset 0 -2px 0 #223348; color: #223348; }
+  [data-theme="journey"] .titem:hover { background: linear-gradient(90deg, rgba(34,51,72,.1), transparent); }
+  [data-theme="journey"] .titem.ai-task { border-left-color: #7660B4; }
+
+  [data-theme="cockpit"] .card, [data-theme="cockpit"] .tabbar, [data-theme="cockpit"] .taskpicker,
+  [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section {
+    position: relative; background: rgba(253,254,254,.92); border: 1px solid #9FB6BC; box-shadow: var(--shadow);
   }
-  [data-theme="ff"] .top .brand { font-style: italic; letter-spacing: .2em; color: #F1E6C8; }
-  [data-theme="ff"] .sec-h { font-family: var(--font-brush); font-style: italic; font-size: 15px; font-weight: 400; letter-spacing: .12em; color: var(--gold); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
-  [data-theme="ff"] .tabbar { border-image: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
-  [data-theme="ff"] .tabbar button[aria-selected="true"] { background: linear-gradient(0deg, rgba(217,184,107,.28), transparent); color: #fff; box-shadow: inset 0 -2px 0 var(--gold); }
-  [data-theme="ff"] .titem:hover { background: linear-gradient(90deg, rgba(217,184,107,.2), transparent); }
-  [data-theme="ff"] .titem.ai-task { border-left-color: #B49BE0; }
-  [data-theme="ff"] .titem .asg { background: rgba(255,255,255,.06); color: #D9C8F5; border-color: #B49BE066; }
+  [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
+  [data-theme="cockpit"] .card::before, [data-theme="cockpit"] .week-side > section::before, [data-theme="cockpit"] #pane-pc > section::before {
+    content: ""; position: absolute; left: -1px; top: -1px; width: 11px; height: 11px; border-left: 2px solid #D98300; border-top: 2px solid #D98300; pointer-events: none;
+  }
+  [data-theme="cockpit"] .card::after, [data-theme="cockpit"] .week-side > section::after, [data-theme="cockpit"] #pane-pc > section::after {
+    content: ""; position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-right: 2px solid #D98300; border-bottom: 2px solid #D98300; pointer-events: none;
+  }
+  [data-theme="cockpit"] .top .brand { font-family: "Rajdhani", sans-serif; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: #D98300; font-size: 22px; }
+  [data-theme="cockpit"] .sec-h { color: #0E8A76; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; }
+  [data-theme="cockpit"] .tabbar button[aria-selected="true"] { background: #D98300; color: #fff; }
+  [data-theme="cockpit"] .chip { border-radius: 0; }
+  [data-theme="cockpit"] .titem.ai-task { border-left-color: #0E8A76; }
+  [data-theme="cockpit"] .titem:hover { background: rgba(217,131,0,.08); }
 }
 </style>
 </head>
@@ -1566,9 +1597,10 @@ try { var __t = localStorage.getItem('dc.theme'); if (__t === 'dq' || __t === 'f
   <header class="top">
     <span class="brand">Daily-Cockpit</span>
     <select class="themesel" id="theme-sel" aria-label="見た目" title="見た目を切り替え">
-      <option value="">いつもの</option>
-      <option value="dq">ドラクエ風</option>
-      <option value="ff">FF15風</option>
+      <option value="">Washi</option>
+      <option value="quest">Quest</option>
+      <option value="journey">Journey</option>
+      <option value="cockpit">Cockpit</option>
     </select>
     <!-- ヘッダーは「日送り」に専念する（2026-09-09 本人判断）。週送りは表の側へ、
          週レンジ表示と再読み込み ↻ は廃止。PC 専用（SP はペイン内の #sp-head を使う） -->
@@ -3154,7 +3186,7 @@ function renderTimeline(view) {
   });
   /* Day は「予定｜自分のタスク｜AIのタスク」の3レーン（2026-10-23）。日付ヘッダーは予定レーンの上、残り2つは見出し */
   if (view === 'day') {
-    [['自分のタスク', 3], ['AIのタスク', 4]].forEach(function (L) {
+    [['Focus', 3], ['Autopilot', 4]].forEach(function (L) {
       var lh = el('div', 'gh lane-h' + (L[1] === 4 ? ' ai' : ''));
       lh.style.gridColumn = String(L[1]); lh.style.gridRow = '1';
       lh.appendChild(el('span', null, L[0]));
@@ -4052,14 +4084,14 @@ function taskItem(task, opts) {
   if (task.status !== 'Done') {
     var isAi = task.assignee === 'AI';
     if (isAi) row.classList.add('ai-task');
-    var asg = el('button', 'asg', isAi ? '→自分' : '→AI');
+    var asg = el('button', 'asg', isAi ? '→Focus' : '→Autopilot');
     asg.type = 'button';
-    asg.title = isAi ? '自分のタスクに戻す' : 'AIに任せる';
+    asg.title = isAi ? '自分で進める（Focus）に戻す' : 'AIに任せる（Autopilot）';
     asg.addEventListener('click', function () {
       task.assignee = isAi ? '自分' : 'AI';
       Store.updateTask(task.id, { assignee: task.assignee });
       rerenderTasks();
-      showToast('「' + task.name + '」を' + (isAi ? '自分' : 'AI') + 'の担当にしました', function () {
+      showToast('「' + task.name + '」を ' + (isAi ? 'Focus' : 'Autopilot') + ' にしました', function () {
         task.assignee = isAi ? 'AI' : '自分';
         Store.updateTask(task.id, { assignee: task.assignee });
         rerenderTasks();
@@ -4140,7 +4172,7 @@ document.addEventListener('pointerdown', function (e) {
     /* つかんだ行は transform で指に追従させ、DOM の入れ替えは
        裏で行う。ずれた分は grabY を補正して見た目を切らさない。
        他の行は FLIP（移動前後の差分から逆向き transform → 0 へ遷移）で滑らせる */
-    var grabY = e.clientY;
+    var grabY = e.clientY, sx0 = e.clientX;
     row.classList.add('dragging');
 
     function siblings() {
@@ -4166,8 +4198,29 @@ document.addEventListener('pointerdown', function (e) {
       });
     }
 
+    /* 左の時間割（時間軸のレーン／校時グリッド）の上に来たら、並び替えではなく「そのコマに置く」ドラッグになる（2026-10-23） */
+    var dropTo = null;
+    function dropTargetAt(ev) {
+      var prev = row.style.pointerEvents;
+      row.style.pointerEvents = 'none';
+      var below = document.elementFromPoint(ev.clientX, ev.clientY);
+      row.style.pointerEvents = prev;
+      var tc = below && below.closest ? below.closest('#grid .tl-col') : null;
+      if (tc) return { el: tc, day: tc.dataset.day, p: nearestPeriod(tlMinAt(tc, ev.clientY)), lane: tc.dataset.lane || null };
+      var sc = below && below.closest ? below.closest('#grid .slot, #grid .cellbox') : null;
+      if (sc && sc.dataset.di != null && state.week) return { el: sc, day: state.week.days[+sc.dataset.di], p: +sc.dataset.p, lane: null };
+      return null;
+    }
     function onMove(ev) {
-      row.style.transform = 'translateY(' + (ev.clientY - grabY) + 'px) scale(1.015)';
+      row.style.transform = 'translate(' + (dropTo ? ev.clientX - sx0 : 0) + 'px,' + (ev.clientY - grabY) + 'px) scale(1.015)';
+      var hit = dropTargetAt(ev);
+      if (dropTo && (!hit || hit.el !== dropTo.el)) { dropTo.el.classList.remove('drop-hint'); hideTlDrop(); }
+      dropTo = hit;
+      if (dropTo) {
+        dropTo.el.classList.add('drop-hint');
+        if (dropTo.el.classList.contains('tl-col')) showTlDrop(dropTo.el, dropTo.p);
+        return;                                   /* 時間割の上では並び替えない */
+      }
       var rows = siblings();
       var next = null;
       for (var i = 0; i < rows.length; i++) {
@@ -4196,6 +4249,15 @@ document.addEventListener('pointerdown', function (e) {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+      if (dropTo) {                                /* 時間割のコマに置く */
+        dropTo.el.classList.remove('drop-hint'); hideTlDrop();
+        siblings().forEach(function (r) { r.style.transition = ''; r.style.transform = ''; });
+        row.classList.remove('dragging'); row.style.transition = ''; row.style.transform = '';
+        var dt = DUMMY_TASKS.find(function (x) { return x.id === row.dataset.tid; });
+        if (dt && dt.status !== 'Done') assignTaskToSlot(dt, dropTo.day, dropTo.p, dropTo.lane);
+        else rerenderTasks();
+        return;
+      }
       /* 着地アニメーション: 今いる場所へふわっと収めてから確定する */
       row.style.transition = 'transform .16s ease';
       row.style.transform = 'translateY(0) scale(1)';

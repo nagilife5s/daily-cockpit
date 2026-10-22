@@ -718,6 +718,10 @@
   .mc-cnt { margin-top: auto; font-size: 10px; color: var(--ink-3); }
   .mc-cell.sel { outline: 2px solid var(--c-events); outline-offset: -2px; }
   .mc-detail { margin-top: 10px; }
+  .mc-detail .row.clickable { cursor: pointer; }
+  @media (hover: hover) { .mc-detail .row.clickable:hover { background: color-mix(in oklch, var(--c-events) 6%, var(--card)); } }
+  .mc-detail .mc-sub { font-size: var(--fs-xs); color: var(--ink-2); white-space: pre-wrap; margin-top: 2px; }
+  .mc-detail .mc-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .mc-detail .row { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-sm); padding: 4px 0; border-top: 1px solid var(--line); }
   .mc-detail .row:first-of-type { border-top: 0; }
   .mc-detail .row .tm { flex: none; color: var(--ink-3); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; min-width: 3.5em; }
@@ -1433,7 +1437,13 @@
     .week-side .titem .tn { flex: 1 1 calc(100% - 64px); }
     .week-side .titem .meta { margin-left: auto; }
     .week-side .kchip.pchip { max-width: 9em; }
+    /* Day: 予定（左）｜自分のタスク｜AIのタスク の3列（2026-10-23）。.week-side を透明にして2つの section を列に直接並べる */
+    #shell[data-gridmode="day"] .week-cols { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+    #shell[data-gridmode="day"] .week-side { display: contents; }
   }
+  #shell:not([data-gridmode="day"]) #pane-pc .ai-sec { display: none; }
+  .titem .asg { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid #b9a6d8; background: #f4effb; color: #5b3f94; cursor: pointer; white-space: nowrap; }
+  .titem.ai-task { border-left: 3px solid #9b7fd1; }
   #pane-sp { display: none; }
   @media (max-width: 700px) {
     #pane-pc { display: none; }
@@ -1610,6 +1620,10 @@
               <h2 class="sec-h" data-icon="planner"><span class="js-tasks-title">今日のタスク</span></h2>
               <div class="tasklist js-daytasks"></div>
             </section>
+            <section class="ai-sec">
+              <h2 class="sec-h" data-icon="planner"><span class="js-tasks-ai-title">AIに任せているタスク</span></h2>
+              <div class="tasklist js-daytasks-ai"></div>
+            </section>
           </div>
         </div>
 
@@ -1687,6 +1701,11 @@
         <section>
           <h2 class="sec-h" data-icon="planner"><span class="js-tasks-title">今日のタスク</span></h2>
           <div class="tasklist js-daytasks"></div>
+        </section>
+
+        <section class="ai-sec">
+          <h2 class="sec-h" data-icon="planner"><span class="js-tasks-ai-title">AIに任せているタスク</span></h2>
+          <div class="tasklist js-daytasks-ai"></div>
         </section>
 
         <section>
@@ -2181,7 +2200,7 @@ var Store = {
     setTimeout(function () {
       done({ id: 'tk-new-' + Date.now(), name: data.name, status: 'Not Started',
              date: data.date ? String(data.date).slice(0, 10) : null, period: per, deadline: null,
-             kind: data.kind || null, mikomi: null, spentMin: 0, order: null, startedAt: null, projectIds: [] });
+             kind: data.kind || null, assignee: data.assignee || '自分', mikomi: null, spentMin: 0, order: null, startedAt: null, projectIds: [] });
     }, 300);
   },
   deleteTask: function (id) { enqueueWrite('deleteTask', [id]); },
@@ -3021,7 +3040,7 @@ function renderTimeline(view) {
   schedule = visibleSchedule(schedule);   /* 区分フィルタ（2026-09-18）。以降のこの関数の中は全部これを見る */
   var isTodayCol = function (day) { return day === today.date && (view === 'day' || today.inWeek); };
   /* タスクは全件（週外の日も出せるように）。GAS では allTasks、モックでは DUMMY_TASKS */
-  var data = timelineItems(days, schedule, DUMMY_TASKS);
+  var data = timelineItems(days, schedule, view === 'day' ? [] : DUMMY_TASKS);   /* Day のタスクは右の2列に出す */
   if (view === 'day') data.perDay.forEach(layoutDayZones);
   var range = timelineRange(data.perDay);
   var lo = range[0], H = (range[1] - range[0]) * TL_PX_PER_MIN;
@@ -3928,6 +3947,26 @@ function taskItem(task, opts) {
     row.appendChild(psel);
   }
 
+  /* 担当の切り替え（自分 ⇄ AI。DB_TASK の select「担当」。2026-10-23） */
+  if (task.status !== 'Done') {
+    var isAi = task.assignee === 'AI';
+    if (isAi) row.classList.add('ai-task');
+    var asg = el('button', 'asg', isAi ? '→自分' : '→AI');
+    asg.type = 'button';
+    asg.title = isAi ? '自分のタスクに戻す' : 'AIに任せる';
+    asg.addEventListener('click', function () {
+      task.assignee = isAi ? '自分' : 'AI';
+      Store.updateTask(task.id, { assignee: task.assignee });
+      rerenderTasks();
+      showToast('「' + task.name + '」を' + (isAi ? '自分' : 'AI') + 'の担当にしました', function () {
+        task.assignee = isAi ? 'AI' : '自分';
+        Store.updateTask(task.id, { assignee: task.assignee });
+        rerenderTasks();
+      });
+    });
+    row.appendChild(asg);
+  }
+
   /* 📅 任意の日へ飛ばす（ネイティブの日付ピッカー）。
      ★GAS は別オリジンの iframe で配信されるため showPicker() が SecurityError になる
        （2026-09-04 実機で「カレンダーが出ない」実害）。透明の <input type=date> を
@@ -4111,36 +4150,51 @@ function renderDayTasks(pane, date) {
 
   /* やる（並び替え可）→ 連絡待ち → 完了 の3段に分ける（本人要望 2026-09-01:
      完了したものがその場に残らない・連絡待ちが混ざらない）。
-     並び替えのドラッグは内側の .tasklist 単位で閉じるので、段をまたいで動かない */
+     並び替えのドラッグは内側の .tasklist 単位で閉じるので、段をまたいで動かない。
+     Day とスマホは「自分」と「AI」の2列に分ける（2026-10-23）。Week は従来どおり1列に全部 */
+  var aiWrap = $('.js-daytasks-ai', pane);
+  if (aiWrap) aiWrap.textContent = '';
+  var split = pane.id === 'pane-sp' || state.gridMode === 'day';
   if (state.loading) { wrap.appendChild(el('div', 'empty', '読み込み中…')); return; }
-  /* 新規作成（2026-09-15）: この日の日付だけ付けて作る（コマには置かない） */
-  wrap.appendChild(quickAddForm('タスクを追加（Enter）', function (name) { createNewTask(name, date, null); }));
-  var all = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
-  var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち'; });
-  var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち'; });
-  var done = all.filter(function (t) { return !isOpen(t); });
-  doing.sort(bySort); waiting.sort(bySort);
-  if (!all.length) wrap.appendChild(el('div', 'empty', 'タスクはありません'));
-  var doingList = el('div', 'tasklist');
-  doing.forEach(function (t) { doingList.appendChild(taskItem(t, { sortable: true })); });
-  if (doing.length) wrap.appendChild(doingList);
-  if (waiting.length) {
-    wrap.appendChild(el('h3', 'tsub', '☎ 連絡待ち ' + waiting.length));
-    var wl = el('div', 'tasklist');
-    waiting.forEach(function (t) { wl.appendChild(taskItem(t, {})); });
-    wrap.appendChild(wl);
+  var isAiTask = function (t) { return t.assignee === 'AI'; };
+  function fillTasks(box, all, assignee, emptyText) {
+    /* 新規作成（2026-09-15）: この日の日付だけ付けて作る（コマには置かない） */
+    box.appendChild(quickAddForm('タスクを追加（Enter）', function (name) { createNewTask(name, date, null, assignee); }));
+    var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち'; });
+    var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち'; });
+    var done = all.filter(function (t) { return !isOpen(t); });
+    doing.sort(bySort); waiting.sort(bySort);
+    if (!all.length) box.appendChild(el('div', 'empty', emptyText));
+    var doingList = el('div', 'tasklist');
+    doing.forEach(function (t) { doingList.appendChild(taskItem(t, { sortable: true })); });
+    if (doing.length) box.appendChild(doingList);
+    if (waiting.length) {
+      box.appendChild(el('h3', 'tsub', '☎ 連絡待ち ' + waiting.length));
+      var wl = el('div', 'tasklist');
+      waiting.forEach(function (t) { wl.appendChild(taskItem(t, {})); });
+      box.appendChild(wl);
+    }
+    if (done.length) {
+      box.appendChild(el('h3', 'tsub', '完了 ' + done.length));
+      var dl = el('div', 'tasklist');
+      done.forEach(function (t) { dl.appendChild(taskItem(t, {})); });
+      box.appendChild(dl);
+    }
   }
-  if (done.length) {
-    wrap.appendChild(el('h3', 'tsub', '完了 ' + done.length));
-    var dl = el('div', 'tasklist');
-    done.forEach(function (t) { dl.appendChild(taskItem(t, {})); });
-    wrap.appendChild(dl);
+  var dayAll = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
+  if (split && aiWrap) {
+    fillTasks(wrap, dayAll.filter(function (t) { return !isAiTask(t); }), '自分', 'タスクはありません');
+    fillTasks(aiWrap, dayAll.filter(isAiTask), 'AI', 'AIに任せているタスクはありません');
+  } else {
+    fillTasks(wrap, dayAll, '自分', 'タスクはありません');
   }
 
   var title = $('.js-tasks-title', pane);
   if (title) {
-    title.textContent = (date === today.date) ? '今日のタスク' : mdw(date) + ' のタスク';
+    title.textContent = (split ? '自分の' : '') + ((date === today.date) ? (split ? 'タスク' : '今日のタスク') : (split ? 'タスク（' + mdw(date) + '）' : mdw(date) + ' のタスク'));
   }
+  var aiTitle = $('.js-tasks-ai-title', pane);
+  if (aiTitle) aiTitle.textContent = 'AIに任せているタスク' + (date === today.date ? '' : '（' + mdw(date) + '）');
 }
 
 /* 種別ごとのサブグループに分けた1カラム（タスク管理ビューの TODAY / INBOX 用）
@@ -4995,11 +5049,11 @@ function quickAddForm(placeholder, onSubmit) {
   });
   return f;
 }
-function createNewTask(name, day, p) {
+function createNewTask(name, day, p, assignee) {
   var where = mdw(day) + (p ? ' ' + p + '校時' : '');
   var date = taskDateValue({ date: day, period: p || null });
   showToast('「' + name + '」を作成中…');
-  Store.createTask({ name: name, date: date, kind: NEW_TASK_KIND }, function (created) {
+  Store.createTask({ name: name, date: date, kind: NEW_TASK_KIND, assignee: assignee || '自分' }, function (created) {
     if (!created || !created.id) return;
     if (!DUMMY_TASKS.some(function (x) { return x.id === created.id; })) DUMMY_TASKS.push(created);
     syncWeekTask(created);
@@ -5467,7 +5521,7 @@ function renderMonthTab() {
   thisM.disabled = ym === curYm;
   thisM.addEventListener('click', function () { state.monthYm = curYm; withTransition(renderMonthTab); });
   nav.appendChild(prev); nav.appendChild(label); nav.appendChild(next); nav.appendChild(thisM);
-  nav.appendChild(el('span', 'mnote', '日付をクリックでその週へ'));
+  nav.appendChild(el('span', 'mnote', '日付をクリックで詳細・予定の追加'));
   root.appendChild(nav);
   root.appendChild(buildKindFilterRow());   /* 区分フィルタ（2026-09-29 から月タブ専用） */
 
@@ -5514,16 +5568,16 @@ function renderMonthTab() {
   visibleEvents.forEach(function (rec) {
     var ch;
     if ((rec.periodLabels || []).indexOf('private') >= 0) {
-      ch = { name: rec.name, color: 'private', time: rec.time };
+      ch = { rec: rec, name: rec.name, color: 'private', time: rec.time };
     } else {
       var c = classify(rec);
       if (c.events.length || c.after.length) {
-        ch = { name: rec.name, color: colorFor(rec, c), time: rec.time };
+        ch = { rec: rec, name: rec.name, color: colorFor(rec, c), time: rec.time };
       } else if (c.runs.length) {
-        ch = { name: rec.name, lesson: true, grade: rec.grade, time: rec.time, firstP: c.runs[0].from,
+        ch = { rec: rec, name: rec.name, lesson: true, grade: rec.grade, time: rec.time, firstP: c.runs[0].from,
                periods: c.runs.map(function (r) { return r.from === r.to ? r.from + '校時' : r.from + '〜' + r.to + '校時'; }).join('・') };
       } else {
-        ch = { name: rec.name, color: 'work', time: rec.time };   /* 時限が空の予定も落とさない */
+        ch = { rec: rec, name: rec.name, color: 'work', time: rec.time };   /* 時限が空の予定も落とさない */
       }
     }
     var endD = rec.endDate && rec.endDate > rec.date ? rec.endDate : rec.date;
@@ -5566,14 +5620,13 @@ function renderMonthTab() {
       cell.tabIndex = 0;
       cell.setAttribute('role', 'button');
       cell.setAttribute('aria-label', mdw2(date) + (byDay[date] ? ' 予定' + byDay[date].chips.length + '件' : ''));
-      if (compact && state.monthSel === date) cell.classList.add('sel');
+      if (state.monthSel === date) cell.classList.add('sel');
       var d = byDay[date];
       /* スマホも点ではなく名前で出す（2026-09-29）。タップで下に一覧も開く */
       if (d) d.chips.forEach(function (ch) { cell.appendChild(monthChip(ch)); });
       (function (dd) {
         cell.addEventListener('click', function () {
-          if (compact) { state.monthSel = dd; renderMonthTab(); return; }   /* スマホは下に展開 */
-          jumpToWeek(dd);
+          state.monthSel = dd; renderMonthTab();   /* 下にその日の詳細パネル（2026-10-23。週へはパネルのボタンから） */
         });
       })(date);
       grid.appendChild(cell);
@@ -5583,8 +5636,8 @@ function renderMonthTab() {
   root.appendChild(grid);
   if (mf.shinro) root.appendChild(buildSchoolLegend());   /* 進路チェック中だけ学校色の凡例 */
 
-  /* スマホ: 選んだ日の予定リスト */
-  if (compact && state.monthSel) {
+  /* 選んだ日の詳細パネル（2026-10-23。PCもスマホも）。予定を押すと編集フォーム、「＋ 予定を追加」で新規 */
+  if (state.monthSel) {
     var sel = state.monthSel;
     var panel = el('div', 'card mc-detail');
     var h3 = el('h3', null, mdw2(sel) + ' の予定');
@@ -5598,13 +5651,33 @@ function renderMonthTab() {
       else dot.dataset.color = ch.color;
       r.appendChild(dot);
       r.appendChild(el('span', 'tm', ch.lesson ? (ch.periods || '') : (ch.time || '終日')));
-      r.appendChild(el('span', 'nm', ch.name));
+      var nm = el('span', 'nm');
+      nm.appendChild(el('b', null, ch.name));
+      var rc = ch.rec || {};
+      var sub = [];
+      if (rc.place && rc.place.length) sub.push('場所: ' + rc.place.join('・'));
+      if (rc.summary) sub.push(rc.summary);
+      if (rc.memo) sub.push('メモ: ' + rc.memo);
+      if (rc.feedback) sub.push('振り返り: ' + rc.feedback);
+      sub.forEach(function (t) { nm.appendChild(el('div', 'mc-sub', t)); });
+      r.appendChild(nm);
+      if (ch.rec) {
+        r.classList.add('clickable');
+        r.title = 'クリックで編集';
+        r.addEventListener('click', function (e) { openLessonEditor({ rec: ch.rec }, e.clientX, e.clientY); });
+      }
       panel.appendChild(r);
     });
+    var acts = el('div', 'mc-acts');
+    var add = el('button', 'pj-back', '＋ 予定を追加');
+    add.addEventListener('click', function (e) {
+      var bx = add.getBoundingClientRect();
+      openLessonEditor({ date: sel }, bx.left + bx.width / 2, bx.top);
+    });
     var go = el('button', 'pj-back', 'この週の週タブへ ›');
-    go.style.marginTop = '8px';
     go.addEventListener('click', function () { jumpToWeek(sel); });
-    panel.appendChild(go);
+    acts.appendChild(add); acts.appendChild(go);
+    panel.appendChild(acts);
     root.appendChild(panel);
     panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
@@ -5637,6 +5710,12 @@ var GRADE_OPTIONS = ['1年', '2年', '3年', '全校', 'その他', '部活', '�
 var PLACE_OPTIONS = ['理科室', '教室', '吉賀中'];
 
 /* 取り直し。週外の日のキャッシュも捨てて、表示日も一緒に新しくする（2026-09-18） */
+/* コマの保存・削除のあと。月タブのキャッシュも捨てて、月タブに居れば描き直す（2026-10-23） */
+function afterLessonSave() {
+  state.months = {};
+  if (state.mode === 'month') renderMonthTab();
+  reloadWeek();
+}
 function reloadWeek() { state.days = {}; loadWeek(state.weekStart); }
 
 /* 週の外の日を見ているときもコマを編集できるよう、週外キャッシュも一緒に探す（2026-09-18） */
@@ -5794,8 +5873,8 @@ function openLessonEditor(opts, x, y) {
     };
     save.disabled = true;
     closeTaskPicker();
-    if (rec) Store.updateLesson(rec.id, data, reloadWeek);
-    else Store.createLesson(data, reloadWeek);
+    if (rec) Store.updateLesson(rec.id, data, afterLessonSave);
+    else Store.createLesson(data, afterLessonSave);
   });
   var cancel = el('button', null, 'キャンセル');
   cancel.addEventListener('click', closeTaskPicker);
@@ -5806,7 +5885,7 @@ function openLessonEditor(opts, x, y) {
     del.addEventListener('click', function () {
       if (!confirm('「' + rec.name + '」を削除しますか？（Notion 側もアーカイブされます）')) return;
       closeTaskPicker();
-      Store.deleteLesson(rec.id, reloadWeek);
+      Store.deleteLesson(rec.id, afterLessonSave);
     });
     btns.appendChild(del);
   }
@@ -6705,6 +6784,7 @@ function onGridModeClick(e) {
   withTransition(function () {
     syncGridModeButtons();
     renderGrid();          /* Day ⇄ Week は同じ #grid に描き分ける */
+    renderDayTasks($('#pane-pc'), state.selectedDate || realToday());   /* Day は自分／AI の2列、Week は1列 */
     ensureSchoolWide();
   });
 }

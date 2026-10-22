@@ -342,6 +342,7 @@ function mapTask_(pg) {
     period,
     deadline: deadline ? deadline.date : null,
     kind: propSelect_(p['タスク種別']),
+    assignee: propSelect_(p['担当']) === 'AI' ? 'AI' : '自分',
     mikomi: propNumber_(p['だいたい見込み時間']),
     spentMin: propNumber_(p['累積実績(分)']) || 0,
     order: propNumber_(p['並び順']),
@@ -1012,7 +1013,7 @@ function createApi(env) {
       return { ok: true };
     },
 
-    /* 書いてよいのは status / 実施予定日 / タスク種別 / 累積実績(分) / セッション開始 / 並び順 だけ */
+    /* 書いてよいのは status / 実施予定日 / タスク種別 / 担当 / 累積実績(分) / セッション開始 / 並び順 だけ */
     async updateTask(taskId, patch) {
       assertId_(taskId);
       patch = patch || {};
@@ -1020,6 +1021,7 @@ function createApi(env) {
       if ('status' in patch)   props['status']       = { status: patch.status ? { name: patch.status } : null };
       if ('date' in patch)     props['実施予定日']   = patch.date ? { date: { start: patch.date } } : { date: null };
       if ('kind' in patch)     props['タスク種別']   = patch.kind ? { select: { name: patch.kind } } : { select: null };
+      if ('assignee' in patch) props['担当']         = { select: { name: patch.assignee === 'AI' ? 'AI' : '自分' } };
       if ('spentMin' in patch) props['累積実績(分)'] = { number: patch.spentMin == null ? null : Number(patch.spentMin) };
       if ('sessionStart' in patch) {
         props['セッション開始'] = patch.sessionStart ? { date: { start: String(patch.sessionStart) } } : { date: null };
@@ -1050,6 +1052,7 @@ function createApi(env) {
       };
       if (data.date) props['実施予定日'] = { date: { start: String(data.date) } };
       if (data.kind) props['タスク種別'] = { select: { name: String(data.kind) } };
+      if (data.assignee === 'AI') props['担当'] = { select: { name: 'AI' } };
       const r = await request_('https://api.notion.com/v1/pages', 'post',
                                { parent: { database_id: NOTION_DS.task.db }, properties: props }, '2022-06-28');
       if (!r.ok) throw new Error('タスクの作成に失敗しました (' + r.code + '): ' + String(r.text).slice(0, 300));

@@ -8,7 +8,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=DotGothic16&family=Noto+Serif+JP:wght@400;500&family=Cormorant+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
+<script>
+/* 見た目テーマ（2026-10-23）。最初の描画前に反映してちらつかせない。''=いつもの / dq / ff */
+try { var __t = localStorage.getItem('dc.theme'); if (__t === 'dq' || __t === 'ff') document.documentElement.dataset.theme = __t; } catch (e) {}
+</script>
 
 <!--
   daily-cockpit — gas/index.html（Main / Tasks / Month / Projects / Docs の5タブ。Main の表は Day｜Week｜学校全体。GAS では実データで動く）
@@ -204,6 +208,35 @@
     --task-soft: #2A2820;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px -14px rgba(0,0,0,.6);
     --mixbase: var(--card);
+  }
+
+  /* ==== ゲーム風テーマ（2026-10-23）。いつもの見た目は触らず、色・枠・フォントだけを差し替える ====
+     dq = ドラクエ風（黒地・白い二重枠・紺のウィンドウ・ドット文字）/ ff = FF15風（夜空・細い金の線・明朝）
+     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。切替は右上の select（dc.theme に保存） */
+  [data-theme="dq"] #banner, [data-theme="ff"] #banner { display: none; }
+  [data-theme="dq"] {
+    color-scheme: dark;
+    --gold: #FFE34D; --ink: #FFFFFF; --ink-2: #E3E9FF; --ink-3: #B8C4FF;
+    --paper: #000000; --card: #00006B; --line: #FFFFFF;
+    --c-events: #7FD6FF; --c-trip: #FFB86B; --c-leave: #FF8FA3; --c-roster: #C9A8FF;
+    --sch-higashi: #FF9A80; --sch-meisei: #5FE0B8; --sch-kenritsu: #C4D0E0;
+    --g-1: #9BE070; --g-2: #5FE0C0; --g-3: #7FB8FF; --g-tobi: #FFE34D;
+    --task: #FFE34D; --task-soft: #00004A;
+    --shadow: inset 0 0 0 2px #00006B, inset 0 0 0 4px #FFFFFF;
+    --radius: 5px; --radius-sm: 2px; --mixbase: var(--card);
+    --font: "DotGothic16", "Hiragino Kaku Gothic ProN", monospace; --font-brush: "DotGothic16", monospace;
+  }
+  [data-theme="ff"] {
+    color-scheme: dark;
+    --gold: #D9B86B; --ink: #E8EDF4; --ink-2: #B9C6D6; --ink-3: #8FA1B6;
+    --paper: #0A111C; --card: #101A2A; --line: rgba(190,205,225,.28);
+    --c-events: #7EC8E3; --c-trip: #E0A85A; --c-leave: #E07A90; --c-roster: #B49BE0;
+    --sch-higashi: #E88A6E; --sch-meisei: #5CCBA8; --sch-kenritsu: #9FB0C0;
+    --g-1: #8CC07A; --g-2: #6CC4B0; --g-3: #6AAED6; --g-tobi: #C4B86A;
+    --task: #D9B86B; --task-soft: #2A2618;
+    --shadow: 0 10px 30px -14px #000;
+    --radius: 2px; --radius-sm: 1px; --mixbase: var(--card);
+    --font: "Noto Serif JP", "Hiragino Mincho ProN", serif; --font-brush: "Cormorant Garamond", "Noto Serif JP", serif;
   }
 }
 
@@ -533,6 +566,10 @@
   .tl-day .tl-ev .lesson .sub { flex-basis: 100%; white-space: normal; }
   .tl-day .tl-ev .lesson .span-badge { display: inline; }
   .tl-day .tl-col { cursor: cell; }
+  .tl-day .tl-col.lane-me, .tl-day .tl-col.lane-ai { border-left: 1px solid var(--line); }
+  .tl-day .tl-col.lane-ai { background-color: color-mix(in oklch, var(--c-roster) 5%, var(--card)); }
+  .tl-day .gh.lane-h { justify-content: center; font-size: var(--fs-sm); color: var(--ink-2); border-left: 1px solid var(--line); }
+  .tl-day .gh.lane-h.ai { color: var(--c-roster); }
   .tl-week .tl-col { cursor: cell; }
   .tl-ev .lesson .tm, .tl-ev .taskcard .tm {
     font-size: 10px; color: var(--ink-3); font-variant-numeric: tabular-nums; line-height: 1.3;
@@ -1437,11 +1474,7 @@
     .week-side .titem .tn { flex: 1 1 calc(100% - 64px); }
     .week-side .titem .meta { margin-left: auto; }
     .week-side .kchip.pchip { max-width: 9em; }
-    /* Day: 予定（左）｜自分のタスク｜AIのタスク の3列（2026-10-23）。.week-side を透明にして2つの section を列に直接並べる */
-    #shell[data-gridmode="day"] .week-cols { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
-    #shell[data-gridmode="day"] .week-side { display: contents; }
   }
-  #shell:not([data-gridmode="day"]) #pane-pc .ai-sec { display: none; }
   .titem .asg { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid #b9a6d8; background: #f4effb; color: #5b3f94; cursor: pointer; white-space: nowrap; }
   .titem.ai-task { border-left: 3px solid #9b7fd1; }
   #pane-sp { display: none; }
@@ -1479,6 +1512,52 @@
     .ksel { font-size: 16px; zoom: .68; }
   }
 }
+
+/* ==========================================================================
+   ゲーム風テーマの装飾（2026-10-23）。色は tokens 層の変数で済むので、ここは枠・背景・見出しだけ。
+   最後に置いて、いつもの見た目（属性なし）には一切効かない
+   ========================================================================== */
+@layer state {
+  .themesel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
+  /* セクション（タスク列・帯）もウィンドウに見せる */
+  [data-theme="dq"] .week-side > section, [data-theme="dq"] #pane-pc > section, [data-theme="dq"] #pane-sp > section,
+  [data-theme="ff"] .week-side > section, [data-theme="ff"] #pane-pc > section, [data-theme="ff"] #pane-sp > section {
+    background: var(--card); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 10px;
+  }
+  [data-theme="dq"] .week-side > section, [data-theme="dq"] #pane-pc > section, [data-theme="dq"] #pane-sp > section { border: 3px solid #fff; box-shadow: var(--shadow); }
+  [data-theme="ff"] .week-side > section, [data-theme="ff"] #pane-pc > section, [data-theme="ff"] #pane-sp > section { border: 1px solid var(--line); background: rgba(14,22,36,.72); }
+  [data-theme="dq"] .sec-h, [data-theme="ff"] .sec-h { margin-top: 0; }
+  [data-theme="dq"] .quickadd input, [data-theme="ff"] .quickadd input { background: transparent; color: var(--ink); }
+  [data-theme="dq"] .quickadd button[type=submit] { background: #fff; color: #000; border-radius: 2px; }
+  [data-theme="ff"] .quickadd button[type=submit] { background: var(--gold); color: #0A0F18; border-radius: 1px; }
+  /* ---- ドラクエ風: 白い二重枠のウィンドウ ---- */
+  [data-theme="dq"] .card, [data-theme="dq"] .tabbar, [data-theme="dq"] .taskpicker, [data-theme="dq"] .toast {
+    border: 3px solid #fff; background: var(--card);
+  }
+  [data-theme="dq"] .tabbar button[aria-selected="true"] { background: #fff; color: #000; }
+  [data-theme="dq"] .top .brand { text-shadow: 2px 2px 0 #0000A8; }
+  [data-theme="dq"] .sec-h { color: #fff; }
+  [data-theme="dq"] .titem { border-color: #fff4; }
+  [data-theme="dq"] .titem.doing::before, [data-theme="dq"] .titem:hover::before { content: "▶"; color: #fff; margin-right: 2px; }
+  [data-theme="dq"] .chip { border: 2px solid #fff; border-radius: 2px; }
+  [data-theme="dq"] button, [data-theme="dq"] input, [data-theme="dq"] select, [data-theme="dq"] textarea { font-family: inherit; }
+  [data-theme="dq"] .titem.ai-task { border-left-color: #C9A8FF; }
+  [data-theme="dq"] .titem .asg { background: #000; color: #fff; border-color: #fff; }
+  /* ---- FF15風: 夜空・半透明の面・細い金の線 ---- */
+  [data-theme="ff"] body { background: radial-gradient(1200px 600px at 75% -10%, #27405F 0, #0E1726 55%, #06090F 100%) fixed, #06090F; }
+  [data-theme="ff"] .card, [data-theme="ff"] .tabbar, [data-theme="ff"] .taskpicker {
+    background: rgba(14,22,36,.72); backdrop-filter: blur(6px);
+    border: 1px solid transparent;
+    border-image: linear-gradient(135deg, rgba(217,184,107,.7), rgba(190,205,225,.15) 40%, rgba(190,205,225,.15) 60%, rgba(217,184,107,.5)) 1;
+  }
+  [data-theme="ff"] .top .brand { font-style: italic; letter-spacing: .2em; color: #F1E6C8; }
+  [data-theme="ff"] .sec-h { font-family: var(--font-brush); font-style: italic; font-size: 15px; font-weight: 400; letter-spacing: .12em; color: var(--gold); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  [data-theme="ff"] .tabbar { border-image: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+  [data-theme="ff"] .tabbar button[aria-selected="true"] { background: linear-gradient(0deg, rgba(217,184,107,.28), transparent); color: #fff; box-shadow: inset 0 -2px 0 var(--gold); }
+  [data-theme="ff"] .titem:hover { background: linear-gradient(90deg, rgba(217,184,107,.2), transparent); }
+  [data-theme="ff"] .titem.ai-task { border-left-color: #B49BE0; }
+  [data-theme="ff"] .titem .asg { background: rgba(255,255,255,.06); color: #D9C8F5; border-color: #B49BE066; }
+}
 </style>
 </head>
 <body>
@@ -1486,6 +1565,11 @@
 
   <header class="top">
     <span class="brand">Daily-Cockpit</span>
+    <select class="themesel" id="theme-sel" aria-label="見た目" title="見た目を切り替え">
+      <option value="">いつもの</option>
+      <option value="dq">ドラクエ風</option>
+      <option value="ff">FF15風</option>
+    </select>
     <!-- ヘッダーは「日送り」に専念する（2026-09-09 本人判断）。週送りは表の側へ、
          週レンジ表示と再読み込み ↻ は廃止。PC 専用（SP はペイン内の #sp-head を使う） -->
     <span class="weeknav headdaynav">
@@ -1620,10 +1704,6 @@
               <h2 class="sec-h" data-icon="planner"><span class="js-tasks-title">今日のタスク</span></h2>
               <div class="tasklist js-daytasks"></div>
             </section>
-            <section class="ai-sec">
-              <h2 class="sec-h" data-icon="planner"><span class="js-tasks-ai-title">AIに任せているタスク</span></h2>
-              <div class="tasklist js-daytasks-ai"></div>
-            </section>
           </div>
         </div>
 
@@ -1701,11 +1781,6 @@
         <section>
           <h2 class="sec-h" data-icon="planner"><span class="js-tasks-title">今日のタスク</span></h2>
           <div class="tasklist js-daytasks"></div>
-        </section>
-
-        <section class="ai-sec">
-          <h2 class="sec-h" data-icon="planner"><span class="js-tasks-ai-title">AIに任せているタスク</span></h2>
-          <div class="tasklist js-daytasks-ai"></div>
         </section>
 
         <section>
@@ -3040,7 +3115,7 @@ function renderTimeline(view) {
   schedule = visibleSchedule(schedule);   /* 区分フィルタ（2026-09-18）。以降のこの関数の中は全部これを見る */
   var isTodayCol = function (day) { return day === today.date && (view === 'day' || today.inWeek); };
   /* タスクは全件（週外の日も出せるように）。GAS では allTasks、モックでは DUMMY_TASKS */
-  var data = timelineItems(days, schedule, view === 'day' ? [] : DUMMY_TASKS);   /* Day のタスクは右の2列に出す */
+  var data = timelineItems(days, schedule, DUMMY_TASKS);
   if (view === 'day') data.perDay.forEach(layoutDayZones);
   var range = timelineRange(data.perDay);
   var lo = range[0], H = (range[1] - range[0]) * TL_PX_PER_MIN;
@@ -3077,6 +3152,15 @@ function renderTimeline(view) {
     if (isTodayCol(day)) h.classList.add('is-today');
     g.appendChild(h);
   });
+  /* Day は「予定｜自分のタスク｜AIのタスク」の3レーン（2026-10-23）。日付ヘッダーは予定レーンの上、残り2つは見出し */
+  if (view === 'day') {
+    [['自分のタスク', 3], ['AIのタスク', 4]].forEach(function (L) {
+      var lh = el('div', 'gh lane-h' + (L[1] === 4 ? ' ai' : ''));
+      lh.style.gridColumn = String(L[1]); lh.style.gridRow = '1';
+      lh.appendChild(el('span', null, L[0]));
+      g.appendChild(lh);
+    });
+  }
 
   /* 2行目: 終日帯（時刻のない行事・出張・休み・放課後）。行の見出しが「終日」なので、チップには時刻欄を出さない */
   if (hasAllDay) {
@@ -3085,7 +3169,7 @@ function renderTimeline(view) {
     g.appendChild(adh);
     data.allDay.forEach(function (list, d) {
       var cell = el('div', 'tl-ad');
-      cell.style.gridColumn = String(d + 2); cell.style.gridRow = '2';
+      cell.style.gridColumn = view === 'day' ? '2 / 5' : String(d + 2); cell.style.gridRow = '2';
       if (isTodayCol(days[d])) cell.classList.add('is-today');
       var cap = (view === 'day' || tlAllDayOpen) ? list.length : TL_ALLDAY_MAX;
       if (list.length === cap + 1) cap++;          /* 「＋1件」のボタンで1行使うなら、そのまま出したほうが早い */
@@ -3132,18 +3216,34 @@ function renderTimeline(view) {
   g.appendChild(axis);
 
   var splitDays = {};
-  data.perDay.forEach(function (items, d) {
+  /* Day は予定／自分のタスク／AIのタスクの3レーンに振り分けてそれぞれ詰め直す。Week は従来どおり日ごとに1列 */
+  var colSets = [];
+  if (view === 'day') {
+    var all0 = data.perDay[0];
+    var lanes = [
+      all0.filter(function (it) { return it.kind !== 'task'; }),
+      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee !== 'AI'; }),
+      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee === 'AI'; })
+    ];
+    lanes.forEach(function (l) { l.forEach(function (it) { it.zoneL = 0; it.zoneW = 100; it.level = 0; }); packColumns(l); });
+    layoutDayZones(lanes[0]);                       /* 長い予定を左の帯へ寄せるのは予定レーンだけ */
+    colSets = lanes.map(function (l, i) { return { items: l, day: days[0], lane: ['ev', 'me', 'ai'][i], gc: i + 2 }; });
+  } else {
+    colSets = data.perDay.map(function (items, d) { return { items: items, day: days[d], lane: null, gc: d + 2, d: d }; });
+  }
+  colSets.forEach(function (cs) {
     var col = el('div', 'tl-col');
-    col.style.gridColumn = String(d + 2); col.style.gridRow = bodyRow; col.style.height = H + 'px';
-    col.dataset.day = days[d];                    /* 空白クリック・ドロップの行き先 */
+    col.style.gridColumn = String(cs.gc); col.style.gridRow = bodyRow; col.style.height = H + 'px';
+    col.dataset.day = cs.day;                     /* 空白クリック・ドロップの行き先 */
     col.dataset.lo = lo;
+    if (cs.lane) { col.dataset.lane = cs.lane; col.classList.add('lane-' + cs.lane); }
     col.title = 'クリックでタスクを割り当て（近い校時に置きます）';
-    if (isTodayCol(days[d])) col.classList.add('is-today');
-    items.forEach(function (it) {
-      if (it.cols > 1) splitDays[d] = true;
+    if (isTodayCol(cs.day)) col.classList.add('is-today');
+    cs.items.forEach(function (it) {
+      if (it.cols > 1 && cs.d != null) splitDays[cs.d] = true;
       col.appendChild(timelineBox(it, lo));
     });
-    if (isTodayCol(days[d]) && nowMin >= lo && nowMin <= range[1]) {
+    if (isTodayCol(cs.day) && nowMin >= lo && nowMin <= range[1]) {
       var nl = el('div', 'tl-now');
       nl.style.top = ((nowMin - lo) * TL_PX_PER_MIN) + 'px';
       col.appendChild(nl);
@@ -3151,7 +3251,7 @@ function renderTimeline(view) {
     g.appendChild(col);
   });
   /* Week で横に割れた日は列を広げる（校時グリッドの2列化と同じ理由。SPLIT_COL_FR） */
-  g.style.gridTemplateColumns = view === 'day' ? '52px 1fr' : '52px ' + [0, 1, 2, 3, 4].map(function (i) {
+  g.style.gridTemplateColumns = view === 'day' ? '52px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr)' : '52px ' + [0, 1, 2, 3, 4].map(function (i) {
     return (splitDays[i] ? SPLIT_COL_FR : 1) + 'fr';
   }).join(' ');
 
@@ -3771,7 +3871,7 @@ function finishTask(t) { var snap = taskSnap(t); settleSession(t); t.status = 'D
 
 /* ==== 取り消し（Undo）: 直前のタスク状態を控えておき、トーストから戻す ==== */
 function taskSnap(t) {
-  return { status: t.status, date: t.date, period: t.period, kind: t.kind, spentMin: t.spentMin || 0, startedAt: t.startedAt || null };
+  return { assignee: t.assignee || '自分', status: t.status, date: t.date, period: t.period, kind: t.kind, spentMin: t.spentMin || 0, startedAt: t.startedAt || null };
 }
 function taskDateValue(t) {   /* Notion に書く 実施予定日 の値 */
   if (!t.date) return null;
@@ -3793,8 +3893,9 @@ function syncWeekTask(t) {    /* 週グリッド用の写しを合わせる（�
 function restoreTask(t, snap) {
   t.status = snap.status; t.date = snap.date; t.period = snap.period; t.kind = snap.kind;
   t.spentMin = snap.spentMin; t.startedAt = snap.startedAt;
+  if (snap.assignee) t.assignee = snap.assignee;
   syncWeekTask(t);
-  Store.updateTask(t.id, { status: t.status, date: taskDateValue(t), kind: t.kind, spentMin: t.spentMin,
+  Store.updateTask(t.id, { assignee: t.assignee || '自分', status: t.status, date: taskDateValue(t), kind: t.kind, spentMin: t.spentMin,
                            sessionStart: t.startedAt ? jstIso(t.startedAt) : null });
   rerenderTasks();
 }
@@ -4152,49 +4253,35 @@ function renderDayTasks(pane, date) {
      完了したものがその場に残らない・連絡待ちが混ざらない）。
      並び替えのドラッグは内側の .tasklist 単位で閉じるので、段をまたいで動かない。
      Day とスマホは「自分」と「AI」の2列に分ける（2026-10-23）。Week は従来どおり1列に全部 */
-  var aiWrap = $('.js-daytasks-ai', pane);
-  if (aiWrap) aiWrap.textContent = '';
-  var split = pane.id === 'pane-sp' || state.gridMode === 'day';
   if (state.loading) { wrap.appendChild(el('div', 'empty', '読み込み中…')); return; }
-  var isAiTask = function (t) { return t.assignee === 'AI'; };
-  function fillTasks(box, all, assignee, emptyText) {
-    /* 新規作成（2026-09-15）: この日の日付だけ付けて作る（コマには置かない） */
-    box.appendChild(quickAddForm('タスクを追加（Enter）', function (name) { createNewTask(name, date, null, assignee); }));
-    var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち'; });
-    var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち'; });
-    var done = all.filter(function (t) { return !isOpen(t); });
-    doing.sort(bySort); waiting.sort(bySort);
-    if (!all.length) box.appendChild(el('div', 'empty', emptyText));
-    var doingList = el('div', 'tasklist');
-    doing.forEach(function (t) { doingList.appendChild(taskItem(t, { sortable: true })); });
-    if (doing.length) box.appendChild(doingList);
-    if (waiting.length) {
-      box.appendChild(el('h3', 'tsub', '☎ 連絡待ち ' + waiting.length));
-      var wl = el('div', 'tasklist');
-      waiting.forEach(function (t) { wl.appendChild(taskItem(t, {})); });
-      box.appendChild(wl);
-    }
-    if (done.length) {
-      box.appendChild(el('h3', 'tsub', '完了 ' + done.length));
-      var dl = el('div', 'tasklist');
-      done.forEach(function (t) { dl.appendChild(taskItem(t, {})); });
-      box.appendChild(dl);
-    }
+  /* 新規作成（2026-09-15）: この日の日付だけ付けて作る（コマには置かない） */
+  wrap.appendChild(quickAddForm('タスクを追加（Enter）', function (name) { createNewTask(name, date, null); }));
+  var all = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
+  var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち'; });
+  var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち'; });
+  var done = all.filter(function (t) { return !isOpen(t); });
+  doing.sort(bySort); waiting.sort(bySort);
+  if (!all.length) wrap.appendChild(el('div', 'empty', 'タスクはありません'));
+  var doingList = el('div', 'tasklist');
+  doing.forEach(function (t) { doingList.appendChild(taskItem(t, { sortable: true })); });
+  if (doing.length) wrap.appendChild(doingList);
+  if (waiting.length) {
+    wrap.appendChild(el('h3', 'tsub', '☎ 連絡待ち ' + waiting.length));
+    var wl = el('div', 'tasklist');
+    waiting.forEach(function (t) { wl.appendChild(taskItem(t, {})); });
+    wrap.appendChild(wl);
   }
-  var dayAll = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
-  if (split && aiWrap) {
-    fillTasks(wrap, dayAll.filter(function (t) { return !isAiTask(t); }), '自分', 'タスクはありません');
-    fillTasks(aiWrap, dayAll.filter(isAiTask), 'AI', 'AIに任せているタスクはありません');
-  } else {
-    fillTasks(wrap, dayAll, '自分', 'タスクはありません');
+  if (done.length) {
+    wrap.appendChild(el('h3', 'tsub', '完了 ' + done.length));
+    var dl = el('div', 'tasklist');
+    done.forEach(function (t) { dl.appendChild(taskItem(t, {})); });
+    wrap.appendChild(dl);
   }
 
   var title = $('.js-tasks-title', pane);
   if (title) {
-    title.textContent = (split ? '自分の' : '') + ((date === today.date) ? (split ? 'タスク' : '今日のタスク') : (split ? 'タスク（' + mdw(date) + '）' : mdw(date) + ' のタスク'));
+    title.textContent = (date === today.date) ? '今日のタスク' : mdw(date) + ' のタスク';
   }
-  var aiTitle = $('.js-tasks-ai-title', pane);
-  if (aiTitle) aiTitle.textContent = 'AIに任せているタスク' + (date === today.date ? '' : '（' + mdw(date) + '）');
 }
 
 /* 種別ごとのサブグループに分けた1カラム（タスク管理ビューの TODAY / INBOX 用）
@@ -5014,12 +5101,16 @@ function periodTimeStr(p) {            /* '8:35' → '08:35'（ISO用にゼロ�
   return ('0' + a[0]).slice(-2) + ':' + a[1];
 }
 
-function assignTaskToSlot(t, day, p) {
+function assignTaskToSlot(t, day, p, lane) {
   var snap = taskSnap(t);
   t.date = day;
   t.period = p;
+  var patch = null;
+  if ((lane || pickerLane) === 'ai' && t.assignee !== 'AI') patch = 'AI';
+  else if ((lane || pickerLane) === 'me' && t.assignee === 'AI') patch = '自分';
+  if (patch) t.assignee = patch;
   syncWeekTask(t);
-  Store.updateTask(t.id, { date: taskDateValue(t) });
+  Store.updateTask(t.id, patch ? { date: taskDateValue(t), assignee: patch } : { date: taskDateValue(t) });
   closeTaskPicker();
   withTransition(refresh);
   showToast('「' + t.name + '」を' + mdw(day) + ' ' + p + '校時に置きました', function () { restoreTask(t, snap); });
@@ -5050,6 +5141,7 @@ function quickAddForm(placeholder, onSubmit) {
   return f;
 }
 function createNewTask(name, day, p, assignee) {
+  if (assignee == null && p) assignee = pickerLane === 'ai' ? 'AI' : '自分';   /* AI の列から作ったらAI担当 */
   var where = mdw(day) + (p ? ' ' + p + '校時' : '');
   var date = taskDateValue({ date: day, period: p || null });
   showToast('「' + name + '」を作成中…');
@@ -5079,6 +5171,7 @@ function closeTaskPicker() {
 function pickerOutside(e) {
   if (pickerEl && !pickerEl.contains(e.target)) closeTaskPicker();
 }
+var pickerLane = null;   /* Day の「自分／AI」レーンから開いたときの行き先（2026-10-23） */
 function openTaskPicker(day, p, x, y) {
   closeTaskPicker();
   /* 候補＝その日に実施予定のタスクだけ（本人要望 2026-09-01: INBOX・積み残しは出さない） */
@@ -5224,9 +5317,11 @@ $('#grid').addEventListener('click', function (e) {
   var col = e.target.closest('.tl-col');
   if (col) {
     if (e.target.closest('.tl-ev')) return;
+    pickerLane = col.dataset.lane || null;
     openTaskPicker(col.dataset.day, nearestPeriod(tlMinAt(col, e.clientY)), e.clientX, e.clientY);
     return;
   }
+  pickerLane = null;
   var s = e.target.closest('.slot, .cellbox');            /* 中身のあるコマにも複数置けるように */
   if (!s || !state.week || s.dataset.di == null) return;
   openTaskPicker(state.week.days[+s.dataset.di], +s.dataset.p, e.clientX, e.clientY);
@@ -5289,7 +5384,9 @@ $('#grid').addEventListener('pointerdown', function (e) {
     if (moved && target) {
       var day = target.dataset.day || state.week.days[+target.dataset.di], p = +target.dataset.p;
       if (isTask) {
-        if (!(t.date === day && t.period === p)) { assignTaskToSlot(t, day, p); return; }
+        var dl = target.dataset.lane;
+        var laneChange = (dl === 'ai' && t.assignee !== 'AI') || (dl === 'me' && t.assignee === 'AI');
+        if (!(t.date === day && t.period === p) || laneChange) { assignTaskToSlot(t, day, p, dl); return; }
       } else {
         var from = +card.dataset.runFrom, to = +card.dataset.runTo;
         if (!(rec.date === day && from === p)) {
@@ -6784,10 +6881,20 @@ function onGridModeClick(e) {
   withTransition(function () {
     syncGridModeButtons();
     renderGrid();          /* Day ⇄ Week は同じ #grid に描き分ける */
-    renderDayTasks($('#pane-pc'), state.selectedDate || realToday());   /* Day は自分／AI の2列、Week は1列 */
     ensureSchoolWide();
   });
 }
+/* 見た目テーマの切替（2026-10-23）。選んだものは端末に覚える */
+(function () {
+  var sel = $('#theme-sel');
+  sel.value = document.documentElement.dataset.theme || '';
+  sel.addEventListener('change', function () {
+    if (sel.value) document.documentElement.dataset.theme = sel.value;
+    else delete document.documentElement.dataset.theme;
+    try { sel.value ? localStorage.setItem('dc.theme', sel.value) : localStorage.removeItem('dc.theme'); } catch (e) {}
+    withTransition(refresh);   /* 心得カードはテーマで出し分けるので描き直す */
+  });
+})();
 $('#gridmode-pc').addEventListener('click', onGridModeClick);
 $('#gridmode-sp').addEventListener('click', onGridModeClick);
 

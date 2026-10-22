@@ -582,6 +582,13 @@ try {
   .tl-day .tl-ev .lesson .sub { flex-basis: 100%; white-space: normal; }
   .tl-day .tl-ev .lesson .span-badge { display: inline; }
   .tl-day .tl-col { cursor: cell; }
+  /* 1校時に何件でも入る箱。はみ出した分は箱の中でスクロール、マウスを乗せると下へ広がって全部見える */
+  .tl-ev.tl-group { flex-direction: column; gap: 2px; overflow-y: auto; scrollbar-width: none; align-items: stretch; }
+  .tl-ev.tl-group::-webkit-scrollbar { display: none; }
+  .tl-ev.tl-group > .taskcard { flex: 0 0 auto; min-height: 22px; }
+  .tl-ev.tl-group > .taskcard .nm { -webkit-line-clamp: 1; }
+  .tl-ev.tl-group .grp-n { position: absolute; right: 4px; top: 1px; font-size: 10px; font-weight: 700; line-height: 14px; padding: 0 5px; border-radius: 7px; background: var(--task); color: #fff; pointer-events: none; z-index: 2; }
+  .tl-ev.tl-group:hover { height: auto !important; min-height: var(--h); max-height: 340px; z-index: 30; background: var(--card); box-shadow: 0 10px 26px -10px rgba(0,0,0,.45); }
   .tl-day .tl-col.lane-me, .tl-day .tl-col.lane-ai { border-left: 1px solid var(--line); }
   .tl-day .tl-col.lane-ai { background-color: color-mix(in oklch, var(--c-roster) 5%, var(--card)); }
   .tl-day .gh.lane-h { justify-content: center; font-size: var(--fs-sm); color: var(--ink-2); border-left: 1px solid var(--line); }
@@ -3112,7 +3119,16 @@ function timelineBox(it, lo) {
   if (len < TL_SHORT_MIN) box.classList.add('is-short');
   if (len <= TL_COMPACT_MIN) box.classList.add('is-compact');
   var card;
-  if (it.kind === 'task') {
+  if (it.kind === 'taskgroup') {       /* 同じ校時に重なったタスクは横に割らず、枠の中で縦に積む（2026-10-23） */
+    box.classList.add('tl-group');
+    box.style.setProperty('--h', box.style.height);
+    it.tasks.forEach(function (t) { box.appendChild(taskCard(t)); });
+    if (it.tasks.length > 1) {
+      var gn = el('span', 'grp-n', String(it.tasks.length));
+      box.appendChild(gn);
+    }
+    return box;
+  } else if (it.kind === 'task') {
     card = taskCard(it.task);
   } else {
     card = lessonCard(it.rec, it.run || { from: 0, to: 0 });
@@ -3257,6 +3273,16 @@ function renderTimeline(view) {
       all0.filter(function (it) { return it.kind === 'task' && it.task.assignee !== 'AI'; }),
       all0.filter(function (it) { return it.kind === 'task' && it.task.assignee === 'AI'; })
     ];
+    [1, 2].forEach(function (li) {                  /* タスクのレーンは校時ごとに1つの箱へまとめる */
+      var byP = {}, grouped = [];
+      lanes[li].forEach(function (it) {
+        var g0 = byP[it.start];
+        if (!g0) { g0 = byP[it.start] = { kind: 'taskgroup', tasks: [], start: it.start, end: it.end }; grouped.push(g0); }
+        g0.tasks.push(it.task);
+      });
+      grouped.forEach(function (g1) { g1.tasks.sort(bySort); });
+      lanes[li] = grouped;
+    });
     lanes.forEach(function (l) { l.forEach(function (it) { it.zoneL = 0; it.zoneW = 100; it.level = 0; }); packColumns(l); });
     layoutDayZones(lanes[0]);                       /* 長い予定を左の帯へ寄せるのは予定レーンだけ */
     colSets = lanes.map(function (l, i) { return { items: l, day: days[0], lane: ['ev', 'me', 'ai'][i], gc: i + 2 }; });

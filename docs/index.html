@@ -582,6 +582,11 @@ try {
   .tl-day .tl-ev .lesson .sub { flex-basis: 100%; white-space: normal; }
   .tl-day .tl-ev .lesson .span-badge { display: inline; }
   .tl-day .tl-col { cursor: cell; }
+  .taskcard { position: relative; }
+  .taskcard .unplace { flex: none; margin-left: auto; align-self: flex-start; border: 0; background: transparent; color: var(--ink-3); font-size: 12px; line-height: 1; padding: 2px 3px; border-radius: 4px; cursor: pointer; opacity: 0; }
+  .taskcard:hover .unplace, .taskcard:focus-within .unplace { opacity: 1; }
+  .taskcard .unplace:hover { background: color-mix(in oklch, var(--c-leave) 18%, transparent); color: var(--c-leave); }
+  @media (hover: none) { .taskcard .unplace { opacity: .7; } }
   /* 1校時に何件でも入る箱。はみ出した分は箱の中でスクロール、マウスを乗せると下へ広がって全部見える */
   .tl-ev.tl-group { flex-direction: column; gap: 2px; overflow-y: auto; scrollbar-width: none; align-items: stretch; }
   .tl-ev.tl-group::-webkit-scrollbar { display: none; }
@@ -1558,7 +1563,8 @@ try {
   [data-theme="quest"] .day-nav, [data-theme="quest"] .headdaynav { text-shadow: 0 1px 3px rgba(0,30,110,.8); }
   [data-theme="quest"] .sec-h { color: #FFE9A6; font-weight: 700; letter-spacing: .08em; }
   [data-theme="quest"] .tabbar button[aria-selected="true"] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
-  [data-theme="quest"] .titem.doing::before, [data-theme="quest"] .titem:hover::before { content: "▶"; color: #FFE9A6; margin-right: 2px; text-shadow: 0 0 8px rgba(255,233,166,.9); }
+  [data-theme="quest"] .titem.doing { box-shadow: inset 4px 0 0 #FFE9A6; }
+  [data-theme="quest"] input[type="checkbox"] { color-scheme: light; accent-color: #FFC94D; }
   [data-theme="quest"] .titem { border-color: rgba(255,255,255,.22); }
   [data-theme="quest"] .chip { border: 1.5px solid rgba(255,255,255,.85); border-radius: 999px; background: rgba(255,255,255,.16); }
   [data-theme="quest"] .titem .asg { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.7); }
@@ -1600,6 +1606,51 @@ try {
   [data-theme="cockpit"] .titem.ai-task { border-left-color: #0E8A76; }
   [data-theme="cockpit"] .titem:hover { background: rgba(217,131,0,.08); }
 }
+
+/* ==========================================================================
+   Journey を磨く（2026-10-23）: 進捗ゲージ・完了の演出・見出し・時間軸の文字
+   ========================================================================== */
+@layer state {
+  .jr-gauge { display: none; }
+  [data-theme="journey"] .jr-gauge { display: flex; flex-direction: column; gap: 3px; min-width: 220px; font-family: "Rajdhani", sans-serif; color: #223348; }
+  .jr-gauge .jg-row { display: grid; grid-template-columns: 74px 1fr 44px; align-items: center; gap: 8px; }
+  .jr-gauge .jg-l { font-weight: 700; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
+  .jr-gauge .jg-n { font-weight: 700; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+  .jr-gauge .jg-track { height: 7px; background: rgba(34,51,72,.16); border: 1px solid rgba(255,255,255,.9); box-shadow: inset 0 1px 2px rgba(34,51,72,.25); overflow: hidden; }
+  .jr-gauge .jg-fill { height: 100%; width: 0; background: linear-gradient(90deg, #2f8f6a, #8fd9a8); box-shadow: 0 0 8px rgba(80,200,140,.7); transition: width .7s cubic-bezier(.2,.8,.2,1); }
+  .jr-gauge .jg-row.ai .jg-fill { background: linear-gradient(90deg, #6a58b8, #b9a8f0); box-shadow: 0 0 8px rgba(130,110,220,.6); }
+  .jr-gauge .jg-row.ai { font-size: 90%; opacity: .9; }
+  .jr-gauge.pulse .jg-fill { animation: jgPulse .9s ease-out; }
+  @keyframes jgPulse { 0% { filter: brightness(1.9); } 100% { filter: brightness(1); } }
+  .jr-gauge.clear .jg-row:first-child .jg-fill { background: linear-gradient(90deg, #d6a93c, #fff0b0); box-shadow: 0 0 12px rgba(230,180,60,.9); }
+
+  /* 完了の演出 */
+  .jr-fx { position: fixed; left: 50%; top: 92px; transform: translateX(-50%); z-index: 200; pointer-events: none; text-align: center; font-family: "Rajdhani", sans-serif; color: #fff;
+           animation: jrFx 2.4s ease forwards; background: linear-gradient(180deg, rgba(24,38,58,.9), rgba(24,38,58,.82)); padding: 14px 48px 12px; border-top: 2px solid #fff; border-bottom: 1px solid rgba(255,255,255,.5); box-shadow: 0 18px 40px -12px rgba(10,20,40,.6); min-width: 420px; }
+  .jr-fx .fx-t { font-size: 34px; font-weight: 700; letter-spacing: .38em; padding-left: .38em; text-shadow: 0 0 18px rgba(255,255,255,.9), 0 2px 10px rgba(20,40,70,.7); }
+  .jr-fx .fx-s { font-size: 14px; letter-spacing: .12em; margin-top: 2px; text-shadow: 0 1px 8px rgba(20,40,70,.9); font-family: "Noto Sans JP", sans-serif; }
+  .jr-fx .fx-line { height: 2px; margin: 6px auto 4px; width: 0; background: linear-gradient(90deg, transparent, #fff, transparent); animation: jrLine 1s .1s ease-out forwards; }
+  .jr-fx.all .fx-t { color: #fff4c4; text-shadow: 0 0 22px rgba(255,214,90,.95), 0 2px 10px rgba(60,40,0,.6); }
+  .jr-fx i { position: absolute; left: 50%; top: 18px; width: 7px; height: 7px; background: #fff; transform: rotate(45deg); opacity: 0; box-shadow: 0 0 8px #fff; animation: jrSpark 1.2s ease-out forwards; }
+  @keyframes jrFx { 0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.94); } 12% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
+  @keyframes jrLine { to { width: 320px; } }
+  @keyframes jrSpark { 0% { opacity: 0; transform: translate(0,0) rotate(45deg) scale(.4); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(45deg) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .jr-fx, .jr-fx i, .jr-fx .fx-line { animation-duration: .01s; } .jr-gauge .jg-fill { transition: none; } }
+
+  /* 見出し・時間軸 */
+  [data-theme="journey"] .sec-h::after { content: ""; flex: 1; height: 1px; margin-left: 8px; background: linear-gradient(90deg, rgba(34,51,72,.45), transparent); }
+  [data-theme="journey"] .card h3 { font-family: "Rajdhani", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #44566A; }
+  [data-theme="journey"] .tl-axis .hr, [data-theme="journey"] .tl-axis .pm { font-family: "Rajdhani", sans-serif; font-weight: 600; }
+  [data-theme="journey"] .gh { font-family: "Rajdhani", sans-serif; letter-spacing: .12em; }
+  [data-theme="journey"] .tl-day .gh.lane-h { text-transform: uppercase; letter-spacing: .24em; font-weight: 700; color: #223348; }
+  [data-theme="journey"] .tl-day .gh.lane-h.ai { color: #6a58b8; }
+  [data-theme="journey"] .tl-col { background-color: rgba(255,255,255,.8); }
+  [data-theme="journey"] .tl-col.is-today { background-color: rgba(255,255,255,.9); }
+  [data-theme="journey"] .tl-now { background: #2f8f6a; }
+  [data-theme="journey"] .taskcard { border-radius: 2px; }
+  [data-theme="journey"] .titem { border-radius: 2px; }
+  [data-theme="journey"] .titem.doing { box-shadow: inset 3px 0 0 #2f8f6a; }
+}
 </style>
 </head>
 <body>
@@ -1613,6 +1664,7 @@ try {
       <option value="journey">Journey</option>
       <option value="cockpit">Cockpit</option>
     </select>
+    <div class="jr-gauge" id="jr-gauge" aria-label="今日の進み具合"></div>
     <!-- ヘッダーは「日送り」に専念する（2026-09-09 本人判断）。週送りは表の側へ、
          週レンジ表示と再読み込み ↻ は廃止。PC 専用（SP はペイン内の #sp-head を使う） -->
     <span class="weeknav headdaynav">
@@ -3662,6 +3714,15 @@ function taskCard(task) {
   var sl = CARD_STATUS[task.status];
   if (sl) bd.appendChild(el('div', 'st', sl));
   c.appendChild(bd);
+  /* ✕ コマから外す（日付は残して、校時の割り当てだけ消す。2026-10-23） */
+  if (task.period && task.status !== 'Done') {
+    var un = el('button', 'unplace', '✕');
+    un.type = 'button';
+    un.title = 'コマから外す（日付は残ります）';
+    un.setAttribute('aria-label', 'コマから外す: ' + task.name);
+    un.addEventListener('click', function (e) { e.stopPropagation(); setTaskDate(task, task.date); });
+    c.appendChild(un);
+  }
   c.title = task.name;
   return c;
 }
@@ -3927,8 +3988,62 @@ function startTask(t)  { t.status = 'In Progress'; t.startedAt = Date.now(); syn
                          Store.updateTask(t.id, { status: 'In Progress', sessionStart: jstIso(t.startedAt) }); rerenderTasks(); }
 function pauseTask(t)  { settleSession(t); t.status = '中断'; syncWeekTask(t);
                          Store.updateTask(t.id, { status: '中断', spentMin: t.spentMin || 0, sessionStart: null }); rerenderTasks(); }
+
+/* ==== Journey: 今日の進捗ゲージと完了の演出（2026-10-23） ==== */
+var jrLast = {};
+function renderGauge() {
+  var box = $('#jr-gauge');
+  if (!box) return;
+  var date = state.selectedDate || realToday();
+  var all = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
+  function row(label, list, cls, key) {
+    var tot = list.length, dn = list.filter(function (t) { return t.status === 'Done'; }).length;
+    var pct = tot ? Math.round(dn * 100 / tot) : 0;
+    var r = el('div', 'jg-row' + (cls ? ' ' + cls : ''));
+    r.appendChild(el('span', 'jg-l', label));
+    var tr = el('div', 'jg-track');
+    var f = el('div', 'jg-fill');
+    f.style.width = (jrLast[key] != null ? jrLast[key] : 0) + '%';        /* 前回の幅から伸ばす */
+    tr.appendChild(f);
+    r.appendChild(tr);
+    r.appendChild(el('span', 'jg-n', dn + '/' + tot));
+    requestAnimationFrame(function () { requestAnimationFrame(function () { f.style.width = pct + '%'; }); });
+    jrLast[key] = pct;
+    return { row: r, pct: pct, tot: tot };
+  }
+  var a = row('Focus', all.filter(function (t) { return t.assignee !== 'AI'; }), '', 'f');
+  var b = row('Autopilot', all.filter(function (t) { return t.assignee === 'AI'; }), 'ai', 'a');
+  var t0 = row('Today', all, '', 't');
+  box.textContent = '';
+  box.classList.toggle('clear', t0.tot > 0 && t0.pct === 100);
+  box.appendChild(t0.row);
+  if (b.tot) box.appendChild(b.row);
+}
+function celebrate(t) {
+  if (document.documentElement.dataset.theme !== 'journey') return;
+  var date = state.selectedDate || realToday();
+  var day = DUMMY_TASKS.filter(function (x) { return x.date === date && x.kind !== '🗑ゴミ箱'; });
+  var left = day.filter(function (x) { return x.status !== 'Done'; }).length;
+  var fx = el('div', 'jr-fx' + (left === 0 ? ' all' : ''));
+  fx.appendChild(el('div', 'fx-t', left === 0 ? 'ALL CLEAR' : 'COMPLETE'));
+  fx.appendChild(el('div', 'fx-line'));
+  fx.appendChild(el('div', 'fx-s', t.name + (left ? '　残り ' + left + ' 件' : '　今日のタスクをすべて終えました')));
+  for (var i = 0; i < 10; i++) {
+    var sp = el('i');
+    var ang = (i / 10) * Math.PI * 2, rad = 90 + (i % 3) * 30;
+    sp.style.setProperty('--dx', Math.round(Math.cos(ang) * rad * 1.8) + 'px');
+    sp.style.setProperty('--dy', Math.round(Math.sin(ang) * rad * .6) + 'px');
+    sp.style.animationDelay = (i % 4) * 40 + 'ms';
+    fx.appendChild(sp);
+  }
+  document.body.appendChild(fx);
+  setTimeout(function () { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 2500);
+  var g = $('#jr-gauge');
+  if (g) { g.classList.remove('pulse'); void g.offsetWidth; g.classList.add('pulse'); }
+}
+
 function finishTask(t) { var snap = taskSnap(t); settleSession(t); t.status = 'Done'; syncWeekTask(t);
-                         Store.updateTask(t.id, { status: 'Done', spentMin: t.spentMin || 0, sessionStart: null }); rerenderTasks();
+                         Store.updateTask(t.id, { status: 'Done', spentMin: t.spentMin || 0, sessionStart: null }); rerenderTasks(); celebrate(t);
                          showToast('「' + t.name + '」を完了にしました', function () { restoreTask(t, snap); }); }
 
 /* ==== 取り消し（Undo）: 直前のタスク状態を控えておき、トーストから戻す ==== */
@@ -5000,6 +5115,7 @@ function renderDayPane() {
   renderDayStrip($('#pane-pc'), date);
   renderDayTasks($('#pane-pc'), date);
   renderInfo($('#pane-pc'), date);
+  renderGauge();
 
   /* 学校全体は「その日」の表なので日送りに追従させる（2026-09-09 本人要望で週表 → 日表に変更）。
      日が別の週に移ったら取り直しも要る（2026-09-18） */
@@ -5421,7 +5537,7 @@ $('#grid').addEventListener('click', function (e) {
 
 /* ---- グリッド上のカード（タスク・授業）をドラッグして別のコマへ ---- */
 $('#grid').addEventListener('pointerdown', function (e) {
-  if (e.target.closest('.ck, .sci-link, .rel-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
+  if (e.target.closest('.ck, .unplace, .sci-link, .rel-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
   var card = e.target.closest('.taskcard, .lesson');
   if (!card || !state.week) return;
   var isTask = card.classList.contains('taskcard');
@@ -6985,6 +7101,7 @@ function onGridModeClick(e) {
     else delete document.documentElement.dataset.theme;
     try { sel.value ? localStorage.setItem('dc.theme', sel.value) : localStorage.removeItem('dc.theme'); } catch (e) {}
     withTransition(refresh);   /* 心得カードはテーマで出し分けるので描き直す */
+    renderGauge();
   });
 })();
 $('#gridmode-pc').addEventListener('click', onGridModeClick);

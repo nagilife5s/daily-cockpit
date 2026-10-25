@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2f8fd"/><stop offset=".55" stop-color="#e1eef9"/><stop offset="1" stop-color="#d3e6f6"/></linearGradient>
+<radialGradient id="core" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#bfe3f7" stop-opacity="0"/></radialGradient>
+<pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="scale(1)">
+<path d="M30 0 L60 17 V43 L30 52 L0 43 V17Z" fill="none" stroke="#2a8fc8" stroke-opacity=".16" stroke-width="1"/></pattern>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/><rect width="1600" height="900" fill="url(#hex)"/>
+<ellipse cx="800" cy="360" rx="720" ry="400" fill="url(#core)"/>
+<g fill="none" stroke="#1d8fc4" stroke-opacity=".38" stroke-width="2">
+<ellipse cx="800" cy="380" rx="560" ry="300"/><ellipse cx="800" cy="380" rx="470" ry="244" stroke-dasharray="6 12"/>
+<path d="M800 60 V120 M800 640 V700 M200 380 H260 M1340 380 H1400"/>
+<circle cx="800" cy="380" r="92"/><circle cx="800" cy="380" r="40"/><path d="M800 300 V340 M800 420 V460 M720 380 H760 M840 380 H880"/>
+</g>
+<g fill="none" stroke="#e8542f" stroke-opacity=".55" stroke-width="3"><path d="M740 320 l-20 0 l0 -20 M860 320 l20 0 l0 -20 M740 440 l-20 0 l0 20 M860 440 l20 0 l0 20"/></g>
+<!-- 下部のコンソール -->
+<path d="M0 900 V720 L260 690 L520 740 H1080 L1340 690 L1600 720 V900Z" fill="#c6dcee" fill-opacity=".85" stroke="#2a8fc8" stroke-opacity=".5"/>
+<path d="M0 900 V780 L300 752 L560 800 H1040 L1300 752 L1600 780 V900Z" fill="#b2cfe6" fill-opacity=".85"/>
+<g fill="#2a8fc8" fill-opacity=".35"><rect x="640" y="760" width="320" height="6"/><rect x="700" y="778" width="200" height="4"/></g>
+<!-- 左右のサイドモニター -->
+<g fill="#ffffff" fill-opacity=".55" stroke="#2a8fc8" stroke-opacity=".5" stroke-width="2"><path d="M40 160 L260 120 V420 L40 460Z"/><path d="M1560 160 L1340 120 V420 L1560 460Z"/></g>
+<g stroke="#2a8fc8" stroke-opacity=".35"><path d="M70 200 L230 172 M70 240 L230 212 M70 280 L230 252 M1530 200 L1370 172 M1530 240 L1370 212 M1530 280 L1370 252"/></g>
+</svg>

@@ -11,11 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
 /* 見た目の設定（2026-10-26）。最初の描画前に反映してちらつかせない。
-   テーマ: 無し=Washi / quest / journey / cockpit。壁紙はテーマごとに1つ選べる（dc.wall.<テーマ> = id / none / custom） */
+   テーマ: 無し=Washi / journey / cockpit。壁紙はテーマごとに1つ選べる（dc.wall.<テーマ> = id / none / custom） */
 var DC_WALLS = {
-  quest:   [{ id: 'hills', name: '丘と城',       css: 'url(themes/bg-quest.jpg)' },
-            { id: 'art',   name: 'イラスト（仮）', css: 'url(themes/bg-quest.svg)' }],
   journey: [{ id: 'road',  name: 'ロードトリップ', css: 'url(themes/bg-journey.jpg)' },
+            { id: 'forest', name: '森と川',         css: 'url(themes/bg-journey-forest.jpg)' },
+            { id: 'castle', name: '城',             css: 'url(themes/bg-journey-castle.jpg)' },
+            { id: 'sea',    name: '海',             css: 'url(themes/bg-journey-sea.jpg)' },
             { id: 'mist',  name: '霧の山',         css: 'url(themes/journey-mist.svg)' },
             { id: 'sky',   name: '空',             css: 'url(themes/journey-sky.svg)' }],
   cockpit: [{ id: 'hex',   name: 'ヘックス',       css: 'url(themes/cockpit-hex.svg)' },
@@ -25,8 +26,8 @@ function dcLs(k) { try { return localStorage.getItem(k); } catch (e) { return nu
 function dcLsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
 function dcApplyLook() {
   var t = dcLs('dc.theme'), h = document.documentElement;
-  if (t === 'dq') t = 'quest'; else if (t === 'ff') t = 'journey';   /* 旧名の読み替え */
-  if (t === 'quest' || t === 'journey' || t === 'cockpit') h.dataset.theme = t; else { t = ''; delete h.dataset.theme; }
+  if (t === 'ff') t = 'journey';   /* 旧名の読み替え（quest は廃止して Washi に戻る） */
+  if (t === 'journey' || t === 'cockpit') h.dataset.theme = t; else { t = ''; delete h.dataset.theme; }
   var css = '';
   if (t) {
     var id = dcLs('dc.wall.' + t), list = DC_WALLS[t], hit = null;
@@ -236,23 +237,9 @@ dcApplyLook();
   }
 
   /* ==== 見た目テーマ（2026-10-23）。Washi（標準）は属性なし。色・枠・フォントだけを差し替える ====
-     quest   = 近年のRPGの青いコマンドウィンドウ（明るい空と丘の背景）
      journey = 旅のロードトリップ風。明るい磨りガラスのパネル
      cockpit = 計器盤。明るい地に琥珀とティールの表示
-     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */
-  [data-theme="quest"] #banner, [data-theme="journey"] #banner, [data-theme="cockpit"] #banner { display: none; }
-  [data-theme="quest"] {
-    color-scheme: dark;
-    --gold: #FFD966; --ink: #FFFFFF; --ink-2: #E6EEFF; --ink-3: #BCCBF5;
-    --paper: #8CCBF5; --card: #2E62CC; --line: rgba(255,255,255,.7);
-    --c-events: #8FE0FF; --c-trip: #FFC27A; --c-leave: #FF9FB0; --c-roster: #D2B8FF;
-    --sch-higashi: #FFA48C; --sch-meisei: #6FE8C4; --sch-kenritsu: #CBD6E8;
-    --g-1: #A6EE80; --g-2: #6FE8CC; --g-3: #8CC4FF; --g-tobi: #FFE680;
-    --task: #FFD966; --task-soft: #2552B8;
-    --shadow: 0 8px 22px -8px rgba(0,20,90,.65), inset 0 0 0 1px rgba(255,255,255,.28);
-    --radius: 14px; --radius-sm: 8px; --mixbase: var(--card);
-    --font: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Zen Maru Gothic", sans-serif;
-  }
+     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */ [data-theme="journey"] #banner, [data-theme="cockpit"] #banner { display: none; }
   [data-theme="journey"] {
     --gold: #B58B3C; --ink: #1C2733; --ink-2: #44566A; --ink-3: #62758A;
     --paper: #DCE8F2; --card: #F8FBFE; --line: rgba(60,90,125,.26);
@@ -1568,33 +1555,10 @@ dcApplyLook();
    ========================================================================== */
 @layer state {
   .themesel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
-  [data-theme="quest"] body   { background: var(--wall, none) center / cover no-repeat fixed, #8CCBF5; }
   [data-theme="journey"] body { background: var(--wall, none) center / cover no-repeat fixed, #DCE8F2; }
   [data-theme="cockpit"] body { background: var(--wall, none) center / cover no-repeat fixed, #DCEAF6; }
 
   /* 区画（カード・タスク欄・帯）をテーマの「窓」に */
-  [data-theme="quest"] .card, [data-theme="quest"] .tabbar, [data-theme="quest"] .taskpicker, [data-theme="quest"] .toast,
-  [data-theme="quest"] .week-side > section, [data-theme="quest"] .week-main > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section {
-    background: linear-gradient(180deg, rgba(74,132,236,.93) 0%, rgba(46,98,204,.94) 55%, rgba(36,80,176,.95) 100%);
-    backdrop-filter: blur(6px);
-    border: 2px solid rgba(255,255,255,.95); border-radius: var(--radius); box-shadow: var(--shadow);
-  }
-  [data-theme="quest"] .week-side > section, [data-theme="quest"] .week-main > section, [data-theme="quest"] #pane-pc > section, [data-theme="quest"] #pane-sp > section { padding: 10px 14px; margin-bottom: 12px; }
-  [data-theme="quest"] .top .brand { font-weight: 700; letter-spacing: .08em; color: #fff; text-shadow: 0 2px 0 #0E256F, 0 0 14px rgba(255,255,255,.5); font-size: 24px; }
-  [data-theme="quest"] .day-nav, [data-theme="quest"] .headdaynav { text-shadow: 0 1px 3px rgba(0,30,110,.8); }
-  [data-theme="quest"] .sec-h { color: #FFE9A6; font-weight: 700; letter-spacing: .08em; }
-  [data-theme="quest"] .tabbar button[aria-selected="true"] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
-  [data-theme="quest"] .titem.doing { box-shadow: inset 4px 0 0 #FFE9A6; }
-  [data-theme="quest"] input[type="checkbox"] { color-scheme: light; accent-color: #FFC94D; }
-  [data-theme="quest"] .titem { border-color: rgba(255,255,255,.22); }
-  [data-theme="quest"] .chip { border: 1.5px solid rgba(255,255,255,.85); border-radius: 999px; background: rgba(255,255,255,.16); }
-  [data-theme="quest"] .titem .asg { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.7); }
-  [data-theme="quest"] .titem .act { background: rgba(255,255,255,.2); color: #fff; border: 1px solid rgba(255,255,255,.75); }
-  [data-theme="quest"] .titem .act.start { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; border-color: #FFE9A6; font-weight: 700; }
-  [data-theme="quest"] .titem .act svg { color: #fff; }
-  [data-theme="quest"] .titem.ai-task { border-left-color: #D2B8FF; }
-  [data-theme="quest"] .quickadd input { background: rgba(255,255,255,.18); color: #fff; }
-  [data-theme="quest"] .quickadd button[type=submit] { background: linear-gradient(#FFE9A6, #FFC94D); color: #1A2A70; }
 
   [data-theme="journey"] .card, [data-theme="journey"] .tabbar, [data-theme="journey"] .taskpicker,
   [data-theme="journey"] .week-side > section, [data-theme="journey"] #pane-pc > section, [data-theme="journey"] #pane-sp > section {
@@ -1707,8 +1671,7 @@ dcApplyLook();
   @keyframes urgentBlink { 50% { opacity: .55; } }
   @media (prefers-reduced-motion: reduce) { .titem .due.urgent { animation: none; } }
 
-  /* ヘッダーのゲージ: Quest / Journey / Cockpit 共通。LV バッジ＋ゲージ＋連続クリア */
-  [data-theme="quest"] .jr-gauge, [data-theme="journey"] .jr-gauge, [data-theme="cockpit"] .jr-gauge { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; color: var(--ink); }
+  /* ヘッダーのゲージ: Journey / Cockpit 共通。LV バッジ＋ゲージ＋連続クリア */ [data-theme="journey"] .jr-gauge, [data-theme="cockpit"] .jr-gauge { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; color: var(--ink); }
   .jr-gauge .jg-rows { display: flex; flex-direction: column; gap: 3px; min-width: 190px; }
   .jr-gauge .jg-lv { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-items: start; column-gap: 4px; font-family: "Rajdhani", sans-serif; }
   .jr-gauge .jg-lvl { font-size: 10px; font-weight: 700; letter-spacing: .2em; opacity: .7; }
@@ -1716,9 +1679,6 @@ dcApplyLook();
   .jr-gauge .jg-exp { grid-column: 1 / -1; width: 100%; height: 3px; background: rgba(120,140,160,.35); margin-top: 2px; }
   .jr-gauge .jg-exp i { display: block; height: 100%; background: #e8b830; box-shadow: 0 0 6px rgba(232,184,48,.8); }
   .jr-gauge .jg-streak { font-family: "Rajdhani", sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: .2em; color: #d9822b; }
-  [data-theme="quest"] .jr-gauge .jg-track { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.8); }
-  [data-theme="quest"] .jr-gauge .jg-fill { background: linear-gradient(90deg, #FFC94D, #FFF0B0); box-shadow: 0 0 8px rgba(255,214,100,.8); }
-  [data-theme="quest"] .jr-gauge .jg-streak { color: #FFE9A6; }
   [data-theme="cockpit"] .jr-gauge .jg-fill { background: linear-gradient(90deg, #0F8FC4, #7FE0FF); box-shadow: 0 0 8px rgba(40,170,230,.7); }
   [data-theme="cockpit"] .jr-gauge .jg-track { border-radius: 0; background: rgba(10,60,110,.14); border-color: rgba(30,130,190,.5); }
 
@@ -1726,8 +1686,6 @@ dcApplyLook();
   .jr-fx .fx-x { margin-top: 6px; font-size: 20px; font-weight: 700; letter-spacing: .14em; color: #ffe27a; text-shadow: 0 0 10px rgba(255,210,80,.8); animation: fxRise .9s .15s ease-out both; }
   .jr-fx .fx-lv { margin-top: 4px; font-size: 24px; font-weight: 700; letter-spacing: .3em; color: #fff; text-shadow: 0 0 18px rgba(255,255,255,.95), 0 0 30px rgba(255,214,90,.9); animation: fxRise .9s .5s ease-out both; }
   @keyframes fxRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .jr-fx.fx-quest { font-family: "Zen Maru Gothic", sans-serif; background: linear-gradient(180deg, rgba(60,110,225,.95), rgba(30,70,170,.95)); border: 2px solid #fff; border-radius: 14px; }
-  .jr-fx.fx-quest .fx-t { font-size: 30px; letter-spacing: .2em; }
   .jr-fx.fx-cockpit { background: linear-gradient(180deg, rgba(8,36,70,.92), rgba(8,36,70,.84)); border-top: 2px solid #5fd0ff; border-bottom: 1px solid rgba(95,208,255,.6); font-family: "Orbitron", "Rajdhani", sans-serif; clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%); padding: 16px 64px 14px; }
   .jr-fx.fx-cockpit .fx-t { font-size: 24px; letter-spacing: .22em; color: #dff6ff; text-shadow: 0 0 16px rgba(95,208,255,.95); }
   .jr-fx.fx-cockpit .fx-line { background: linear-gradient(90deg, transparent, #5fd0ff, transparent); }
@@ -4112,18 +4070,16 @@ function pauseTask(t)  { settleSession(t); t.status = '中断'; syncWeekTask(t);
 /* ==== ゲーム要素（2026-10-26）。経験値・レベル・連続クリア・演出・効果音。記録は端末の localStorage ====
    dc.exp（経験値）/ dc.expDone（経験値を付けたタスクID。取り消して付け直しても二重に増えない）/ dc.clears（全完了した日）
    dc.fx（'0' で演出オフ）/ dc.sound（'1' で効果音オン）。Notion には書かない */
-var GAME_THEMES = { quest: 1, journey: 1, cockpit: 1 };
+var GAME_THEMES = { journey: 1, cockpit: 1 };
 function gameTheme() { var t = document.documentElement.dataset.theme; return GAME_THEMES[t] ? t : ''; }
 function dcJ(k, def) { try { var v = JSON.parse(dcLs(k)); return v == null ? def : v; } catch (e) { return def; } }
 var FX_TEXT = {
   journey: { done: 'COMPLETE', all: 'ALL CLEAR', lv: 'LEVEL UP', exp: 'EXP' },
-  cockpit: { done: 'MISSION COMPLETE', all: 'ALL SYSTEMS CLEAR', lv: 'RANK UP', exp: 'XP' },
-  quest:   { done: 'クエスト達成！', all: 'ぜんぶ クリア！', lv: 'レベルアップ！', exp: 'けいけんち' }
+  cockpit: { done: 'MISSION COMPLETE', all: 'ALL SYSTEMS CLEAR', lv: 'RANK UP', exp: 'XP' }
 };
 var GAME_LABEL = {
   journey: { tasks: 'QUEST LOG', events: "TODAY'S EVENTS", after: 'AFTER SCHOOL' },
-  cockpit: { tasks: 'MISSION LOG', events: 'BRIEFING', after: 'STANDBY' },
-  quest:   { tasks: 'クエスト', events: 'きょうの できごと', after: 'ほうかご' }
+  cockpit: { tasks: 'MISSION LOG', events: 'BRIEFING', after: 'STANDBY' }
 };
 function gl(key, fallback) { var t = gameTheme(); return t ? GAME_LABEL[t][key] : fallback; }
 function lvFromExp(e) { return Math.floor(Math.sqrt(e / 40)) + 1; }
@@ -7309,7 +7265,6 @@ function onGridModeClick(e) {
 /* ==== 設定パネル（2026-10-26）: 見た目・壁紙・演出・記録。選んだものは端末に覚える ==== */
 var THEME_TILES = [
   { key: '',        name: 'Washi',   sub: '標準',               sw: 'linear-gradient(135deg,#EDF3F6,#C2D4E2)' },
-  { key: 'quest',   name: 'Quest',   sub: '冒険のコマンド',     sw: 'linear-gradient(135deg,#4A84EC,#24509F)' },
   { key: 'journey', name: 'Journey', sub: '旅のメニュー',       sw: 'linear-gradient(135deg,#DCE8F2,#F3D9BC)' },
   { key: 'cockpit', name: 'Cockpit', sub: 'モビルスーツ風',     sw: 'linear-gradient(135deg,#F7FBFF,#7FD0F0)' }
 ];
@@ -7354,7 +7309,7 @@ function renderSettings() {
 
   sec('壁紙');
   if (!theme) {
-    panel.appendChild(el('p', 'set-note', 'Washi は壁紙なし（上のバナーが壁紙の代わりです）。Quest / Journey / Cockpit を選ぶと壁紙を切り替えられます。'));
+    panel.appendChild(el('p', 'set-note', 'Washi は壁紙なし（上のバナーが壁紙の代わりです）。Journey / Cockpit を選ぶと壁紙を切り替えられます。'));
   } else {
     var cur = dcLs('dc.wall.' + theme) || DC_WALLS[theme][0].id;
     var wall = el('div', 'set-walls');
@@ -7410,7 +7365,7 @@ function renderSettings() {
   }
   toggle('完了のときの演出（COMPLETE など）', 'dc.fx', '1', '0', '1');
   toggle('効果音（完了・レベルアップ）', 'dc.sound', '1', '0', '0');
-  panel.appendChild(el('p', 'set-note', '演出・ゲージ・レベルは Quest / Journey / Cockpit のときだけ出ます。'));
+  panel.appendChild(el('p', 'set-note', '演出・ゲージ・レベルは Journey / Cockpit のときだけ出ます。'));
 
   sec('記録（この端末）');
   var st = expStats();

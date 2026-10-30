@@ -1788,11 +1788,26 @@ dcApplyLook();
   [data-theme="block"] .week-side > section::after, [data-theme="block"] .week-main > section::after, [data-theme="block"] #pane-pc > section::after, [data-theme="block"] #pane-sp > section::after {
     content: "▼"; position: absolute; right: 14px; bottom: 5px; font-size: 11px; line-height: 1; color: #9A6A30; pointer-events: none;
   }
+  [data-theme="block"] .week-side > section::before, [data-theme="block"] .week-main > section::before, [data-theme="block"] #pane-pc > section::before, [data-theme="block"] #pane-sp > section::before {
+    content: "?"; position: absolute; right: 16px; top: -10px; width: 22px; height: 22px; box-sizing: border-box; border: 2px solid #8A5A28; border-radius: 4px; pointer-events: none;
+    background: linear-gradient(180deg, #FFE866, #F2B600); color: #8A5A28; font: 900 14px/18px "Zen Maru Gothic", sans-serif; text-align: center;
+  }
+  /* 画面の下に、草つきのレンガの地面 */
+  [data-theme="block"] body::after {
+    content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 40px; z-index: 5; pointer-events: none;
+    background:
+      linear-gradient(#5FD83A 0 7px, #2E9A1A 7px 10px, transparent 10px),
+      repeating-linear-gradient(90deg, transparent 0 62px, rgba(42,18,6,.6) 62px 64px) 0 10px / 100% 15px no-repeat,
+      repeating-linear-gradient(90deg, transparent 0 30px, rgba(42,18,6,.6) 30px 32px) 0 25px / 100% 15px no-repeat,
+      linear-gradient(transparent 0 24px, rgba(42,18,6,.6) 24px 26px, transparent 26px),
+      #C84C0C;
+  }
+  [data-theme="block"] #app { padding-bottom: 52px; }
   [data-theme="block"] .sec-h { display: flex; width: fit-content; max-width: 100%; font-family: "Zen Maru Gothic", sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: .1em; color: #fff; padding: 3px 16px; margin-left: -4px;
-    background: linear-gradient(180deg, #70492A, #4A2E16); box-shadow: inset 0 0 0 1px #D2AC68;
+    background: linear-gradient(180deg, #F2514B, #C81F1B); box-shadow: inset 0 0 0 1.5px #FFD84A; text-shadow: 0 1px 0 #7A1210;
     clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); }
-  [data-theme="block"] .top .brand { font-family: "Zen Maru Gothic", sans-serif; font-weight: 700; font-size: 20px; letter-spacing: .1em; color: #fff; text-shadow: 0 2px 0 #7A4A1E, 0 0 8px rgba(60,30,0,.7); }
-  [data-theme="block"] .top .brand::after { content: "★ ADVENTURE"; margin-left: 12px; font: 700 11px "Zen Maru Gothic", sans-serif; letter-spacing: .14em; color: #FFE27A; vertical-align: middle; }
+  [data-theme="block"] .top .brand { font-family: "Zen Maru Gothic", sans-serif; font-weight: 900; font-size: 22px; letter-spacing: .06em; color: #fff; -webkit-text-stroke: 5px #C81F1B; paint-order: stroke fill; text-shadow: none; filter: drop-shadow(0 3px 0 #7A1210); }
+  [data-theme="block"] .top .brand::after { content: "WORLD 1-1"; margin-left: 14px; font: 900 12px "Zen Maru Gothic", sans-serif; letter-spacing: .12em; color: #fff; -webkit-text-stroke: 0; filter: none; text-shadow: 0 2px 0 #7A1210, 0 0 6px rgba(60,20,0,.6); vertical-align: middle; }
   [data-theme="block"] .top { color: #fff; }
   [data-theme="block"] .top .weeknav { color: #fff; background: rgba(16,26,56,.86); border: 1.5px solid rgba(255,255,255,.55); border-radius: 10px; padding: 4px 10px; }
   [data-theme="block"] .top .weeknav .range { color: #fff; }
@@ -1806,8 +1821,8 @@ dcApplyLook();
   [data-theme="block"] .jr-gauge .jg-exp i { background: #FFC93C; box-shadow: none; }
   [data-theme="block"] .jr-gauge .jg-streak { color: #FFE27A; }
   [data-theme="block"] .tabbar { background: transparent; border: 0; box-shadow: none; gap: 6px; overflow: visible; }
-  [data-theme="block"] .tabbar button { background: linear-gradient(180deg, rgba(34,48,92,.92), rgba(16,26,56,.94)); color: #fff; border: 1.5px solid rgba(255,255,255,.55); border-radius: 8px; font-weight: 700; letter-spacing: .06em; }
-  [data-theme="block"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #FFF6CE, #F0CC6C); color: #5A3A1A; border-color: #8A5A28; box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+  [data-theme="block"] .tabbar button { background: linear-gradient(180deg, #F2514B, #C81F1B); color: #fff; border: 2px solid #7A1210; border-radius: 8px; font-weight: 900; letter-spacing: .06em; text-shadow: 0 1px 0 #7A1210; box-shadow: 0 3px 0 #7A1210; }
+  [data-theme="block"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #FFE866, #F2B600); color: #5A3A1A; border-color: #8A5A28; text-shadow: none; transform: translateY(2px); box-shadow: 0 1px 0 #8A5A28; }
   [data-theme="block"] .chip, [data-theme="block"] .chip.soft { border: 1px solid rgba(138,90,40,.55); border-radius: 5px; background: rgba(255,255,255,.7); color: #3B2412; }
   [data-theme="block"] .seg { background: rgba(255,255,255,.7); border: 1.5px solid #8A5A28; border-radius: 8px; }
   [data-theme="block"] .seg button { border-radius: 6px; }
@@ -1826,7 +1841,7 @@ dcApplyLook();
   [data-theme="block"] .tl-now { background: #D0453A; }
   [data-theme="block"] .gh, [data-theme="block"] .tl-day .gh.lane-h { font-weight: 700; letter-spacing: .1em; }
   [data-theme="block"] .tl-day .gh.lane-h.ai { color: #2E7A1E; }
-  [data-theme="block"] .quickadd button[type=submit] { background: linear-gradient(180deg, #FFC15A, #E8820F); color: #fff; border: 1.5px solid #8A5A28; border-radius: 6px; text-shadow: 0 1px 0 rgba(90,40,0,.6); }
+  [data-theme="block"] .quickadd button[type=submit] { background: linear-gradient(90deg, #3FD04E, #0DAA1C 60%, #078C14); color: #fff; border: 2px solid #035A0C; border-radius: 6px; font-weight: 900; text-shadow: 0 1px 0 #035A0C; box-shadow: 0 3px 0 #035A0C; }
   [data-theme="block"] .carry-alert { background: #FFE6DF; border: 1px solid #CF4338; color: #7A1D14; border-radius: 6px; }
   [data-theme="block"] .toast { border-radius: 8px; background: rgba(16,26,56,.95); border: 1.5px solid rgba(255,255,255,.6); color: #fff; }
   /* 完了の演出: ダメージ表示のような星形のバーストに、白抜きの縁取り文字。星がはじける */
@@ -4192,12 +4207,12 @@ function dcJ(k, def) { try { var v = JSON.parse(dcLs(k)); return v == null ? def
 var FX_TEXT = {
   journey: { done: 'COMPLETE', all: 'ALL CLEAR', lv: 'LEVEL UP', exp: 'EXP' },
   cockpit: { done: 'MISSION COMPLETE', all: 'ALL SYSTEMS CLEAR', lv: 'RANK UP', exp: 'XP' },
-  block:   { done: 'できた！', all: 'ぜんぶ クリア！', lv: 'レベルアップ！', exp: 'EXP' }
+  block:   { done: 'COURSE CLEAR!', all: 'WORLD CLEAR!', lv: '1UP!', exp: 'COIN' }
 };
 var GAME_LABEL = {
   journey: { tasks: 'QUEST LOG', events: "TODAY'S EVENTS", after: 'AFTER SCHOOL' },
   cockpit: { tasks: 'MISSION LOG', events: 'BRIEFING', after: 'STANDBY' },
-  block:   { tasks: 'クエスト', events: 'きょうの できごと', after: 'ほうかご' }
+  block:   { tasks: 'COURSE 1-1', events: "TODAY'S COURSE", after: 'BONUS STAGE' }
 };
 function gl(key, fallback) { var t = gameTheme(); return t ? GAME_LABEL[t][key] : fallback; }
 function lvFromExp(e) { return Math.floor(Math.sqrt(e / 40)) + 1; }

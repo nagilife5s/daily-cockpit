@@ -34,6 +34,8 @@ function dcApplyLook() {
     else { for (var i = 0; i < list.length; i++) if (list[i].id === id) hit = list[i]; css = (hit || list[0]).css; }
   }
   if (css) h.style.setProperty('--wall', css); else h.style.removeProperty('--wall');
+  var bl = dcLs('dc.blur');   /* 壁紙のぼかし: 0 なし / 1 弱 / 2 強 */
+  h.style.setProperty('--wb', bl === '2' ? '18px' : bl === '1' ? '7px' : '0px');
 }
 dcApplyLook();
 </script>
@@ -1553,8 +1555,13 @@ dcApplyLook();
    ========================================================================== */
 @layer state {
   .themesel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
-  [data-theme="journey"] body { background: var(--wall, none) center / cover no-repeat fixed, #DCE8F2; }
-  [data-theme="cockpit"] body { background: var(--wall, none) center / cover no-repeat fixed, #0B1038; }
+  [data-theme="journey"] body { background: #DCE8F2; }
+  [data-theme="cockpit"] body { background: #0B1038; }
+  /* 壁紙は固定レイヤーに描く（ぼかし dc.blur を掛けるため）。縁が白く抜けないよう外へはみ出させる */
+  [data-theme="journey"]::before, [data-theme="cockpit"]::before {
+    content: ""; position: fixed; inset: -40px; z-index: -1; pointer-events: none;
+    background: var(--wall, none) center / cover no-repeat; filter: blur(var(--wb, 0px)); transform: translateZ(0);
+  }
 
   /* 区画（カード・タスク欄・帯）をテーマの「窓」に */
 
@@ -7382,6 +7389,17 @@ function renderSettings() {
     });
     up.appendChild(fi);
     panel.appendChild(up);
+    sec('壁紙のぼかし');
+    var bcur = dcLs('dc.blur') || '0', brow = el('div', 'set-walls');
+    [['0', 'なし'], ['1', '弱'], ['2', '強']].forEach(function (o) {
+      var bb = el('button', 'set-wall is-none'); bb.type = 'button';
+      bb.setAttribute('aria-pressed', String(bcur === o[0]));
+      bb.appendChild(el('span', null, o[1]));
+      bb.addEventListener('click', function () { dcLsSet('dc.blur', o[0]); lookChanged(); });
+      brow.appendChild(bb);
+    });
+    panel.appendChild(brow);
+    panel.appendChild(el('p', 'set-note', '職場の画面で目立たせたくないときは「強」。この端末だけの設定です。'));
     panel.appendChild(el('p', 'set-note', '全端末で使いたい壁紙は、画像を themes フォルダに入れて Claude に頼んでください（一覧に追加します）。'));
   }
 

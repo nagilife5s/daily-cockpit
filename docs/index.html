@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
 /* 見た目の設定（2026-10-26）。最初の描画前に反映してちらつかせない。
    テーマ: 無し=Washi / journey / cockpit。壁紙はテーマごとに1つ選べる（dc.wall.<テーマ> = id / none / custom） */
@@ -17,15 +17,16 @@ var DC_WALLS = {
             { id: 'forest', name: '森と川',         css: 'url(themes/bg-journey-forest.jpg)' },
             { id: 'castle', name: '城',             css: 'url(themes/bg-journey-castle.jpg)' },
             { id: 'sea',    name: '海',             css: 'url(themes/bg-journey-sea.jpg)' }],
-  cockpit: [{ id: 'freedom', name: 'フリーダム（アニメ）', css: 'url(themes/bg-cockpit-freedom.jpg)' },
-            { id: 'real',    name: 'フリーダム（リアル）', css: 'url(themes/bg-cockpit-freedom-real.jpg)' }]
+  block:   [{ id: 'desert', name: 'Desert',        css: 'url(themes/bg-block-desert.jpg)' }],
+  cockpit: [{ id: 'freedom', name: 'Freedom · Anime', css: 'url(themes/bg-cockpit-freedom.jpg)' },
+            { id: 'real',    name: 'Freedom · Real', css: 'url(themes/bg-cockpit-freedom-real.jpg)' }]
 };
 function dcLs(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function dcLsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
 function dcApplyLook() {
   var t = dcLs('dc.theme'), h = document.documentElement;
   if (t === 'ff') t = 'journey';   /* 旧名の読み替え（quest は廃止して Washi に戻る） */
-  if (t === 'journey' || t === 'cockpit') h.dataset.theme = t; else { t = ''; delete h.dataset.theme; }
+  if (t === 'journey' || t === 'cockpit' || t === 'block') h.dataset.theme = t; else { t = ''; delete h.dataset.theme; }
   var css = '';
   if (t) {
     var id = dcLs('dc.wall.' + t), list = DC_WALLS[t], hit = null;
@@ -239,7 +240,7 @@ dcApplyLook();
   /* ==== 見た目テーマ（2026-10-23）。Washi（標準）は属性なし。色・枠・フォントだけを差し替える ====
      journey = 旅のロードトリップ風。明るい磨りガラスのパネル
      cockpit = モビルスーツのコックピット。宇宙の闇に半透明の青いホログラム面と琥珀の差し色
-     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */ [data-theme="journey"] #banner, [data-theme="cockpit"] #banner { display: none; }
+     ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */ [data-theme="journey"] #banner, [data-theme="cockpit"] #banner, [data-theme="block"] #banner { display: none; }
   [data-theme="journey"] {
     --gold: #B58B3C; --ink: #1C2733; --ink-2: #44566A; --ink-3: #62758A;
     --paper: #DCE8F2; --card: #F8FBFE; --line: rgba(60,90,125,.26);
@@ -250,6 +251,17 @@ dcApplyLook();
     --shadow: 0 10px 28px -14px rgba(40,70,110,.45);
     --radius: 3px; --radius-sm: 2px;
     --font: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Rajdhani", "Noto Sans JP", sans-serif;
+  }
+  [data-theme="block"] {
+    --gold: #E8A21B; --ink: #3B2412; --ink-2: #6A4A2C; --ink-3: #86694A;
+    --paper: #E8C98A; --card: #FFFBEC; --line: rgba(122,74,30,.4);
+    --c-events: #2A78C0; --c-trip: #D9731F; --c-leave: #CF4338; --c-roster: #7A55B8;
+    --sch-higashi: #C1503A; --sch-meisei: #1F8A72; --sch-kenritsu: #4B5A67;
+    --g-1: #3F9A3A; --g-2: #0E8F7E; --g-3: #2A78C0; --g-tobi: #B38A00;
+    --task: #E08A00; --task-soft: #FFF1C8;
+    --shadow: 0 4px 10px rgba(60,30,0,.28);
+    --radius: 6px; --radius-sm: 4px;
+    --font: "Zen Maru Gothic", "Noto Sans JP", sans-serif; --font-brush: "Zen Maru Gothic", sans-serif;
   }
   [data-theme="cockpit"] {
     --gold: #FFA445; --ink: #E8F5FF; --ink-2: #B9D8EE; --ink-3: #8FB6D2;
@@ -1558,7 +1570,8 @@ dcApplyLook();
   [data-theme="journey"] body { background: #DCE8F2; }
   [data-theme="cockpit"] body { background: #0B1038; }
   /* 壁紙は固定レイヤーに描く（ぼかし dc.blur を掛けるため）。縁が白く抜けないよう外へはみ出させる */
-  [data-theme="journey"]::before, [data-theme="cockpit"]::before {
+  [data-theme="block"] body { background: #E8C98A; }
+  [data-theme="journey"]::before, [data-theme="cockpit"]::before, [data-theme="block"]::before {
     content: ""; position: fixed; inset: -40px; z-index: -1; pointer-events: none;
     background: var(--wall, none) center / cover no-repeat; filter: blur(var(--wb, 0px)); transform: translateZ(0);
   }
@@ -1676,7 +1689,7 @@ dcApplyLook();
   @keyframes urgentBlink { 50% { opacity: .55; } }
   @media (prefers-reduced-motion: reduce) { .titem .due.urgent { animation: none; } }
 
-  /* ヘッダーのゲージ: Journey / Cockpit 共通。LV バッジ＋ゲージ＋連続クリア */ [data-theme="journey"] .jr-gauge, [data-theme="cockpit"] .jr-gauge { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; color: var(--ink); }
+  /* ヘッダーのゲージ: Journey / Cockpit 共通。LV バッジ＋ゲージ＋連続クリア */ [data-theme="journey"] .jr-gauge, [data-theme="cockpit"] .jr-gauge, [data-theme="block"] .jr-gauge { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; color: var(--ink); }
   .jr-gauge .jg-rows { display: flex; flex-direction: column; gap: 3px; min-width: 190px; }
   .jr-gauge .jg-lv { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-items: start; column-gap: 4px; font-family: "Rajdhani", sans-serif; }
   .jr-gauge .jg-lvl { font-size: 10px; font-weight: 700; letter-spacing: .2em; opacity: .7; }
@@ -1710,13 +1723,13 @@ dcApplyLook();
   }
   [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] .week-main > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section {
     position: relative; padding: 10px 16px 12px; margin-bottom: 12px;
-    background: linear-gradient(160deg, #2C86B8, #1B6593 55%, #144E7C);
+    background: linear-gradient(160deg, #4098C6, #2E7BAA 55%, #25699A);
     border: 1px solid #66D2F5; box-shadow: inset 0 0 0 1px rgba(170,235,255,.35), inset 0 0 26px rgba(120,220,255,.18);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
   }
   [data-theme="cockpit"] .tdy-sec { padding: 10px 16px 12px; margin-bottom: 12px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
   [data-theme="cockpit"] .card, [data-theme="cockpit"] .taskpicker, [data-theme="cockpit"] .tdy-sec {
-    position: relative; background: linear-gradient(160deg, #2A82B3, #17598A); border: 1px solid rgba(102,210,245,.8); box-shadow: inset 0 0 18px rgba(120,220,255,.15);
+    position: relative; background: linear-gradient(160deg, #3D93C1, #2A72A1); border: 1px solid rgba(102,210,245,.8); box-shadow: inset 0 0 18px rgba(120,220,255,.15);
   }
   [data-theme="cockpit"] .week-side > section::before, [data-theme="cockpit"] .week-main > section::before, [data-theme="cockpit"] #pane-pc > section::before, [data-theme="cockpit"] #pane-sp > section::before {
     content: ""; position: absolute; left: 0; top: 0; width: 64px; height: 3px; background: linear-gradient(90deg, #9BEBFF, transparent); box-shadow: 0 0 8px rgba(155,235,255,.9); pointer-events: none;
@@ -1763,6 +1776,75 @@ dcApplyLook();
   [data-theme="cockpit"] .tl-ad.is-today { background: rgba(255,164,69,.3); color: var(--ink); }
   [data-theme="cockpit"] .carry-alert { background: rgba(120,20,50,.55); border-color: rgba(255,139,160,.8); color: #FFE3E9; }
   [data-theme="cockpit"] .toast { border-radius: 0; background: rgba(8,22,64,.97); border: 1px solid #7fe3ff; color: #E8F5FF; }
+
+  /* ---- Adventure（key: block）: スーパーマリオRPG（Switchリメイク）の雰囲気。やわらかい立体感の背景、羊皮紙の会話ウィンドウ、
+     焦げ茶の名札、シアンのHPバー、星のエフェクト。固有のキャラクター・ロゴ・画像は使わず、色と形だけで寄せる ---- */
+  [data-theme="block"] .week-side > section, [data-theme="block"] .week-main > section, [data-theme="block"] #pane-pc > section, [data-theme="block"] #pane-sp > section,
+  [data-theme="block"] .card, [data-theme="block"] .taskpicker, [data-theme="block"] .tdy-sec {
+    position: relative; background: linear-gradient(180deg, #FFF9E2, #F8E4AA); border: 2px solid #8A5A28; border-radius: 8px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.6), 0 6px 14px rgba(50,25,0,.35);
+  }
+  [data-theme="block"] .week-side > section, [data-theme="block"] .week-main > section, [data-theme="block"] #pane-pc > section, [data-theme="block"] #pane-sp > section, [data-theme="block"] .tdy-sec { padding: 14px 18px 16px; margin-bottom: 16px; }
+  [data-theme="block"] .week-side > section::after, [data-theme="block"] .week-main > section::after, [data-theme="block"] #pane-pc > section::after, [data-theme="block"] #pane-sp > section::after {
+    content: "▼"; position: absolute; right: 14px; bottom: 5px; font-size: 11px; line-height: 1; color: #9A6A30; pointer-events: none;
+  }
+  [data-theme="block"] .sec-h { display: flex; width: fit-content; max-width: 100%; font-family: "Zen Maru Gothic", sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: .1em; color: #fff; padding: 3px 16px; margin-left: -4px;
+    background: linear-gradient(180deg, #70492A, #4A2E16); box-shadow: inset 0 0 0 1px #D2AC68;
+    clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); }
+  [data-theme="block"] .top .brand { font-family: "Zen Maru Gothic", sans-serif; font-weight: 700; font-size: 20px; letter-spacing: .1em; color: #fff; text-shadow: 0 2px 0 #7A4A1E, 0 0 8px rgba(60,30,0,.7); }
+  [data-theme="block"] .top .brand::after { content: "★ ADVENTURE"; margin-left: 12px; font: 700 11px "Zen Maru Gothic", sans-serif; letter-spacing: .14em; color: #FFE27A; vertical-align: middle; }
+  [data-theme="block"] .top { color: #fff; }
+  [data-theme="block"] .top .weeknav { color: #fff; background: rgba(16,26,56,.86); border: 1.5px solid rgba(255,255,255,.55); border-radius: 10px; padding: 4px 10px; }
+  [data-theme="block"] .top .weeknav .range { color: #fff; }
+  [data-theme="block"] .top .weeknav .arrow { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.5); box-shadow: none; }
+  [data-theme="block"] .top .weeknav button { background: linear-gradient(180deg, #FFF8DC, #F3DA97); color: #4A2E16; border: 1.5px solid #8A5A28; border-radius: 6px; text-shadow: none; }
+  /* パーティ表示（画面下のHPバー）風のゲージ。濃紺の板に、白縁のシアンのバー */
+  [data-theme="block"] .jr-gauge { color: #fff; background: rgba(16,26,56,.86); border: 1.5px solid rgba(255,255,255,.55); border-radius: 10px; padding: 5px 14px; }
+  [data-theme="block"] .jr-gauge .jg-track { border-radius: 3px; background: #0B1330; border: 2px solid #fff; height: 10px; }
+  [data-theme="block"] .jr-gauge .jg-fill { background: linear-gradient(180deg, #8DF0FF, #26B4E2); box-shadow: none; }
+  [data-theme="block"] .jr-gauge .jg-exp { background: #0B1330; height: 4px; border-radius: 2px; }
+  [data-theme="block"] .jr-gauge .jg-exp i { background: #FFC93C; box-shadow: none; }
+  [data-theme="block"] .jr-gauge .jg-streak { color: #FFE27A; }
+  [data-theme="block"] .tabbar { background: transparent; border: 0; box-shadow: none; gap: 6px; overflow: visible; }
+  [data-theme="block"] .tabbar button { background: linear-gradient(180deg, rgba(34,48,92,.92), rgba(16,26,56,.94)); color: #fff; border: 1.5px solid rgba(255,255,255,.55); border-radius: 8px; font-weight: 700; letter-spacing: .06em; }
+  [data-theme="block"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #FFF6CE, #F0CC6C); color: #5A3A1A; border-color: #8A5A28; box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+  [data-theme="block"] .chip, [data-theme="block"] .chip.soft { border: 1px solid rgba(138,90,40,.55); border-radius: 5px; background: rgba(255,255,255,.7); color: #3B2412; }
+  [data-theme="block"] .seg { background: rgba(255,255,255,.7); border: 1.5px solid #8A5A28; border-radius: 8px; }
+  [data-theme="block"] .seg button { border-radius: 6px; }
+  [data-theme="block"] .seg button[aria-selected="true"], [data-theme="block"] .seg button[aria-pressed="true"] { background: linear-gradient(180deg, #FFE48A, #F0B53A); color: #4A2E16; box-shadow: none; }
+  [data-theme="block"] .titem { background: #FFFDF3; border: 1px solid rgba(138,90,40,.55); border-radius: 6px; box-shadow: none; }
+  [data-theme="block"] .titem:hover { background: #FFF4CC; }
+  [data-theme="block"] .titem.doing { border-left: 5px solid #E8A21B; background: #FFF3C4; }
+  [data-theme="block"] .titem.ai-task { border-left: 5px solid #4FB04A; }
+  [data-theme="block"] .titem .act { border: 1px solid #8A5A28; border-radius: 5px; background: linear-gradient(180deg, #fff, #F3E3B4); color: #3B2412; }
+  [data-theme="block"] .titem .act.start { background: linear-gradient(180deg, #8FDB78, #3FA02A); border-color: #2E7A1E; color: #fff; text-shadow: 0 1px 0 rgba(0,60,0,.5); }
+  [data-theme="block"] .titem .act.pause { background: linear-gradient(180deg, #FFE48A, #F0B53A); color: #4A2E16; }
+  [data-theme="block"] .titem .asg { border: 1px solid #8A5A28; border-radius: 5px; background: #EAF3FF; color: #2A4A7A; }
+  [data-theme="block"] .taskcard { border: 1px solid rgba(138,90,40,.55); border-left: 5px solid #E8A21B; border-radius: 4px; }
+  [data-theme="block"] .tl-col { background-color: rgba(255,251,236,.78); }
+  [data-theme="block"] .tl-col.is-today { background-color: rgba(255,238,170,.82); }
+  [data-theme="block"] .tl-now { background: #D0453A; }
+  [data-theme="block"] .gh, [data-theme="block"] .tl-day .gh.lane-h { font-weight: 700; letter-spacing: .1em; }
+  [data-theme="block"] .tl-day .gh.lane-h.ai { color: #2E7A1E; }
+  [data-theme="block"] .quickadd button[type=submit] { background: linear-gradient(180deg, #FFC15A, #E8820F); color: #fff; border: 1.5px solid #8A5A28; border-radius: 6px; text-shadow: 0 1px 0 rgba(90,40,0,.6); }
+  [data-theme="block"] .carry-alert { background: #FFE6DF; border: 1px solid #CF4338; color: #7A1D14; border-radius: 6px; }
+  [data-theme="block"] .toast { border-radius: 8px; background: rgba(16,26,56,.95); border: 1.5px solid rgba(255,255,255,.6); color: #fff; }
+  /* 完了の演出: ダメージ表示のような星形のバーストに、白抜きの縁取り文字。星がはじける */
+  [data-theme="block"] .jr-fx { background: none; border: 0; box-shadow: none; clip-path: none; padding: 34px 90px; font-family: "Zen Maru Gothic", sans-serif; }
+  [data-theme="block"] .jr-fx::before, [data-theme="block"] .jr-fx::after { content: ""; position: absolute; inset: 0; z-index: 0; clip-path: polygon(50.0% 0.0%, 58.0% 14.9%, 71.7% 5.0%, 72.4% 21.9%, 89.1% 18.8%, 82.4% 34.4%, 98.7% 38.9%, 86.0% 50.0%, 98.7% 61.1%, 82.4% 65.6%, 89.1% 81.2%, 72.4% 78.1%, 71.7% 95.0%, 58.0% 85.1%, 50.0% 100.0%, 42.0% 85.1%, 28.3% 95.0%, 27.6% 78.1%, 10.9% 81.2%, 17.6% 65.6%, 1.3% 61.1%, 14.0% 50.0%, 1.3% 38.9%, 17.6% 34.4%, 10.9% 18.8%, 27.6% 21.9%, 28.3% 5.0%, 42.0% 14.9%); }
+  [data-theme="block"] .jr-fx::before { background: #E8620F; }
+  [data-theme="block"] .jr-fx::after { inset: 8px 14px; background: #FFD83A; }
+  [data-theme="block"] .jr-fx > * { position: relative; z-index: 1; }
+  [data-theme="block"] .jr-fx.fx-block .fx-t { font-size: 32px; font-weight: 900; letter-spacing: .06em; padding-left: 0; color: #fff; -webkit-text-stroke: 5px #D2530A; paint-order: stroke fill; text-shadow: none; }
+  [data-theme="block"] .jr-fx.fx-block.all .fx-t { color: #FFFBD0; }
+  [data-theme="block"] .jr-fx.fx-block .fx-line { display: none; }
+  [data-theme="block"] .jr-fx.fx-block .fx-s { color: #5A2E0A; font-weight: 700; text-shadow: none; }
+  [data-theme="block"] .jr-fx.fx-block .fx-x { color: #fff; -webkit-text-stroke: 4px #D2530A; paint-order: stroke fill; text-shadow: none; font-weight: 900; }
+  [data-theme="block"] .jr-fx.fx-block .fx-lv { color: #fff; -webkit-text-stroke: 4px #2E7A1E; paint-order: stroke fill; text-shadow: none; font-weight: 900; letter-spacing: .08em; }
+  [data-theme="block"] .jr-fx.fx-block i { z-index: 2; width: 16px; height: 16px; border-radius: 0; background: #FFE04A; box-shadow: none; transform: none;
+    clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); }
+  [data-theme="block"] .jr-fx.fx-block i:nth-of-type(3n) { background: #5FE06A; }
+  [data-theme="block"] .jr-fx.fx-block i:nth-of-type(3n+1) { background: #B27CFF; }
 }
 </style>
 </head>
@@ -4104,16 +4186,18 @@ function pauseTask(t)  { settleSession(t); t.status = '中断'; syncWeekTask(t);
 /* ==== ゲーム要素（2026-10-26）。経験値・レベル・連続クリア・演出・効果音。記録は端末の localStorage ====
    dc.exp（経験値）/ dc.expDone（経験値を付けたタスクID。取り消して付け直しても二重に増えない）/ dc.clears（全完了した日）
    dc.fx（'0' で演出オフ）/ dc.sound（'1' で効果音オン）。Notion には書かない */
-var GAME_THEMES = { journey: 1, cockpit: 1 };
+var GAME_THEMES = { journey: 1, cockpit: 1, block: 1 };
 function gameTheme() { var t = document.documentElement.dataset.theme; return GAME_THEMES[t] ? t : ''; }
 function dcJ(k, def) { try { var v = JSON.parse(dcLs(k)); return v == null ? def : v; } catch (e) { return def; } }
 var FX_TEXT = {
   journey: { done: 'COMPLETE', all: 'ALL CLEAR', lv: 'LEVEL UP', exp: 'EXP' },
-  cockpit: { done: 'MISSION COMPLETE', all: 'ALL SYSTEMS CLEAR', lv: 'RANK UP', exp: 'XP' }
+  cockpit: { done: 'MISSION COMPLETE', all: 'ALL SYSTEMS CLEAR', lv: 'RANK UP', exp: 'XP' },
+  block:   { done: 'できた！', all: 'ぜんぶ クリア！', lv: 'レベルアップ！', exp: 'EXP' }
 };
 var GAME_LABEL = {
   journey: { tasks: 'QUEST LOG', events: "TODAY'S EVENTS", after: 'AFTER SCHOOL' },
-  cockpit: { tasks: 'MISSION LOG', events: 'BRIEFING', after: 'STANDBY' }
+  cockpit: { tasks: 'MISSION LOG', events: 'BRIEFING', after: 'STANDBY' },
+  block:   { tasks: 'クエスト', events: 'きょうの できごと', after: 'ほうかご' }
 };
 function gl(key, fallback) { var t = gameTheme(); return t ? GAME_LABEL[t][key] : fallback; }
 function lvFromExp(e) { return Math.floor(Math.sqrt(e / 40)) + 1; }
@@ -7304,6 +7388,7 @@ function onGridModeClick(e) {
 var THEME_TILES = [
   { key: '',        name: 'Washi',   sub: '標準',               sw: 'linear-gradient(135deg,#EDF3F6,#C2D4E2)' },
   { key: 'journey', name: 'Journey', sub: '旅のメニュー',       sw: 'linear-gradient(135deg,#DCE8F2,#F3D9BC)' },
+  { key: 'block',   name: 'Adventure', sub: 'ぼうけんのしょ',     sw: 'linear-gradient(135deg,#FFF3C4,#E8A21B)' },
   { key: 'cockpit', name: 'Cockpit', sub: 'モビルスーツ風',     sw: 'linear-gradient(135deg,#F7FBFF,#7FD0F0)' }
 ];
 var settingsEl = null;
@@ -7331,7 +7416,7 @@ function renderSettings() {
 
   function sec(title) { var h = el('h3', 'set-h', title); panel.appendChild(h); }
 
-  sec('見た目');
+  sec('Theme');
   var tiles = el('div', 'set-tiles');
   THEME_TILES.forEach(function (tl) {
     var b = el('button', 'set-tile'); b.type = 'button';

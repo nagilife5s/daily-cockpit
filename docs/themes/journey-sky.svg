@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-<defs>
-<linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc2ee"/><stop offset=".7" stop-color="#d4e9f8"/><stop offset="1" stop-color="#f6f1e4"/></linearGradient>
-<filter id="b"><feGaussianBlur stdDeviation="16"/></filter>
-</defs>
-<rect width="1600" height="900" fill="url(#s)"/>
-<g fill="#fff" filter="url(#b)" opacity=".9"><ellipse cx="320" cy="230" rx="240" ry="46"/><ellipse cx="520" cy="200" rx="150" ry="40"/><ellipse cx="1120" cy="150" rx="280" ry="42"/><ellipse cx="1380" cy="330" rx="200" ry="34"/><ellipse cx="760" cy="440" rx="320" ry="38"/></g>
-<rect y="760" width="1600" height="140" fill="#cfe0d2" opacity=".55"/>
-</svg>

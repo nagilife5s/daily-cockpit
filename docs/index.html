@@ -16,11 +16,9 @@ var DC_WALLS = {
   journey: [{ id: 'road',  name: 'ロードトリップ', css: 'url(themes/bg-journey.jpg)' },
             { id: 'forest', name: '森と川',         css: 'url(themes/bg-journey-forest.jpg)' },
             { id: 'castle', name: '城',             css: 'url(themes/bg-journey-castle.jpg)' },
-            { id: 'sea',    name: '海',             css: 'url(themes/bg-journey-sea.jpg)' },
-            { id: 'mist',  name: '霧の山',         css: 'url(themes/journey-mist.svg)' },
-            { id: 'sky',   name: '空',             css: 'url(themes/journey-sky.svg)' }],
-  cockpit: [{ id: 'hex',   name: 'ヘックス',       css: 'url(themes/cockpit-hex.svg)' },
-            { id: 'line',  name: '計器（線画）',   css: 'url(themes/bg-cockpit.jpg)' }]
+            { id: 'sea',    name: '海',             css: 'url(themes/bg-journey-sea.jpg)' }],
+  cockpit: [{ id: 'freedom', name: 'フリーダム',     css: 'url(themes/bg-cockpit-freedom.jpg)' },
+            { id: 'space', name: '宇宙（星の流れ）', css: 'url(themes/cockpit-space.svg)' }]
 };
 function dcLs(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function dcLsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
@@ -238,7 +236,7 @@ dcApplyLook();
 
   /* ==== 見た目テーマ（2026-10-23）。Washi（標準）は属性なし。色・枠・フォントだけを差し替える ====
      journey = 旅のロードトリップ風。明るい磨りガラスのパネル
-     cockpit = 計器盤。明るい地に琥珀とティールの表示
+     cockpit = モビルスーツのコックピット。宇宙の闇に半透明の青いホログラム面と琥珀の差し色
      ゲームの名前・ロゴ・画像は使わず、雰囲気だけ。背景は themes/bg-*.jpg（無ければ .svg）。切替はヘッダーの select（dc.theme） */ [data-theme="journey"] #banner, [data-theme="cockpit"] #banner { display: none; }
   [data-theme="journey"] {
     --gold: #B58B3C; --ink: #1C2733; --ink-2: #44566A; --ink-3: #62758A;
@@ -252,15 +250,16 @@ dcApplyLook();
     --font: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif; --font-brush: "Rajdhani", "Noto Sans JP", sans-serif;
   }
   [data-theme="cockpit"] {
-    --gold: #E8742F; --ink: #0A2540; --ink-2: #2B4B6B; --ink-3: #54748F;
-    --paper: #E3EFF9; --card: #F7FBFF; --line: rgba(30,130,190,.4);
-    --c-events: #0F8FC4; --c-trip: #D9822B; --c-leave: #D9455F; --c-roster: #6A62D6;
-    --sch-higashi: #C1503A; --sch-meisei: #1F8A72; --sch-kenritsu: #4B5A67;
-    --g-1: #5E9444; --g-2: #1F8F80; --g-3: #3A78A8; --g-tobi: #A08A3C;
-    --task: #0F8FC4; --task-soft: #E1F3FC;
-    --shadow: 0 12px 30px -16px rgba(10,60,110,.5);
+    --gold: #FFA445; --ink: #E8F5FF; --ink-2: #B9D8EE; --ink-3: #8FB6D2;
+    --paper: #0B1038; --card: rgba(16,44,98,.66); --line: rgba(110,205,255,.4);
+    --c-events: #5CC8FF; --c-trip: #FFB45A; --c-leave: #FF7F98; --c-roster: #ABA0FF;
+    --sch-higashi: #FF8A6E; --sch-meisei: #4FD1B8; --sch-kenritsu: #9FB4C6;
+    --g-1: #8FD66E; --g-2: #4FD1B8; --g-3: #6AB6FF; --g-tobi: #E0C466;
+    --task: #5CC8FF; --task-soft: rgba(70,170,240,.2);
+    --shadow: 0 0 0 rgba(0,0,0,0);
     --radius: 0px; --radius-sm: 0px;
     --font: "Rajdhani", "Noto Sans JP", sans-serif; --font-brush: "Orbitron", "Rajdhani", sans-serif;
+    --mixbase: #10306E; color-scheme: dark;
   }
 }
 
@@ -1556,7 +1555,7 @@ dcApplyLook();
 @layer state {
   .themesel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
   [data-theme="journey"] body { background: var(--wall, none) center / cover no-repeat fixed, #DCE8F2; }
-  [data-theme="cockpit"] body { background: var(--wall, none) center / cover no-repeat fixed, #DCEAF6; }
+  [data-theme="cockpit"] body { background: var(--wall, none) center / cover no-repeat fixed, #0B1038; }
 
   /* 区画（カード・タスク欄・帯）をテーマの「窓」に */
 
@@ -1680,7 +1679,7 @@ dcApplyLook();
   .jr-gauge .jg-exp i { display: block; height: 100%; background: #e8b830; box-shadow: 0 0 6px rgba(232,184,48,.8); }
   .jr-gauge .jg-streak { font-family: "Rajdhani", sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: .2em; color: #d9822b; }
   [data-theme="cockpit"] .jr-gauge .jg-fill { background: linear-gradient(90deg, #0F8FC4, #7FE0FF); box-shadow: 0 0 8px rgba(40,170,230,.7); }
-  [data-theme="cockpit"] .jr-gauge .jg-track { border-radius: 0; background: rgba(10,60,110,.14); border-color: rgba(30,130,190,.5); }
+  [data-theme="cockpit"] .jr-gauge .jg-track { border-radius: 0; background: rgba(5,15,50,.55); border-color: rgba(110,205,255,.6); }
 
   /* 完了の演出（テーマ別の板） */
   .jr-fx .fx-x { margin-top: 6px; font-size: 20px; font-weight: 700; letter-spacing: .14em; color: #ffe27a; text-shadow: 0 0 10px rgba(255,210,80,.8); animation: fxRise .9s .15s ease-out both; }
@@ -1693,42 +1692,56 @@ dcApplyLook();
   @keyframes fxLock { 0% { opacity: 0; transform: scale(2.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(.9); } }
   .jr-fx.fx-cockpit.all .fx-t { color: #fff3c4; text-shadow: 0 0 18px rgba(255,200,90,.95); }
 
-  /* ---- Cockpit: モビルスーツのコックピット風（明るい版）。斜めに切った面・細いシアンの線・六角の飾り ---- */
+  /* ---- Cockpit: マイティストライクフリーダムのコクピット風。宇宙の闇に半透明の青いホログラム面、琥珀のゲージ ---- */
   [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] .week-main > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section {
     position: relative; padding: 10px 16px 12px; margin-bottom: 12px;
-    background: linear-gradient(135deg, rgba(255,255,255,.86), rgba(232,244,252,.7)); backdrop-filter: blur(10px) saturate(1.1);
-    border: 1px solid rgba(30,130,190,.5); box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.85);
-    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    background: linear-gradient(155deg, rgba(60,150,230,.34), rgba(14,36,92,.7) 55%, rgba(10,26,72,.74)); backdrop-filter: blur(7px) saturate(1.2);
+    border: 1px solid rgba(120,215,255,.7); box-shadow: inset 0 0 26px rgba(80,190,255,.16), inset 0 1px 0 rgba(200,240,255,.5);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
   }
   [data-theme="cockpit"] .card, [data-theme="cockpit"] .taskpicker {
-    position: relative; background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(236,246,253,.82)); border: 1px solid rgba(30,130,190,.5); box-shadow: var(--shadow);
+    position: relative; background: linear-gradient(155deg, rgba(60,150,230,.3), rgba(14,36,92,.72)); border: 1px solid rgba(120,215,255,.6); box-shadow: inset 0 0 18px rgba(80,190,255,.14);
   }
   [data-theme="cockpit"] .week-side > section::before, [data-theme="cockpit"] .week-main > section::before, [data-theme="cockpit"] #pane-pc > section::before, [data-theme="cockpit"] #pane-sp > section::before {
-    content: ""; position: absolute; left: 0; top: 0; width: 46px; height: 3px; background: linear-gradient(90deg, #0F8FC4, transparent); pointer-events: none;
+    content: ""; position: absolute; left: 0; top: 0; width: 64px; height: 3px; background: linear-gradient(90deg, #7fe3ff, transparent); box-shadow: 0 0 8px rgba(127,227,255,.9); pointer-events: none;
   }
   [data-theme="cockpit"] .week-side > section::after, [data-theme="cockpit"] .week-main > section::after, [data-theme="cockpit"] #pane-pc > section::after, [data-theme="cockpit"] #pane-sp > section::after {
-    content: ""; position: absolute; right: 18px; bottom: 5px; width: 28px; height: 3px; background: repeating-linear-gradient(90deg, #E8742F 0 6px, transparent 6px 9px); pointer-events: none; opacity: .8;
+    content: ""; position: absolute; right: 22px; bottom: 5px; width: 34px; height: 4px; background: repeating-linear-gradient(90deg, #FFA445 0 6px, transparent 6px 9px); pointer-events: none; opacity: .9; box-shadow: 0 0 6px rgba(255,164,69,.6);
   }
-  [data-theme="cockpit"] .top .brand { font-family: "Orbitron", sans-serif; font-weight: 700; letter-spacing: .2em; font-size: 17px; color: #0A2540; text-transform: uppercase; }
-  [data-theme="cockpit"] .top .brand::after { content: "● ONLINE"; margin-left: 12px; font: 700 10px "Rajdhani", sans-serif; letter-spacing: .24em; color: #1aa34a; vertical-align: middle; }
-  [data-theme="cockpit"] .sec-h { font-family: "Orbitron", "Rajdhani", sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #0F8FC4; }
-  [data-theme="cockpit"] .sec-h::after { content: ""; flex: 1; height: 1px; margin-left: 8px; background: linear-gradient(90deg, rgba(15,143,196,.6), transparent); }
+  /* 前方の照準リング（全体の飾り）。クリックは通す */
+  [data-theme="cockpit"] body::before {
+    content: ""; position: fixed; left: 50%; top: 52%; width: 520px; height: 520px; margin: -260px 0 0 -260px; pointer-events: none; z-index: 0; opacity: .22;
+    background:
+      radial-gradient(circle, transparent 0 46%, rgba(127,227,255,.9) 46.4% 46.8%, transparent 47.2% 70%, rgba(127,227,255,.55) 70.3% 70.6%, transparent 71%),
+      linear-gradient(90deg, transparent 0 40%, rgba(127,227,255,.7) 40% 45%, transparent 45% 55%, rgba(127,227,255,.7) 55% 60%, transparent 60%) center / 100% 1px no-repeat,
+      linear-gradient(0deg, transparent 0 40%, rgba(127,227,255,.7) 40% 45%, transparent 45% 55%, rgba(127,227,255,.7) 55% 60%, transparent 60%) center / 1px 100% no-repeat;
+  }
+  [data-theme="cockpit"] #app { position: relative; z-index: 1; }
+  [data-theme="cockpit"] .top .brand { font-family: "Orbitron", sans-serif; font-weight: 700; letter-spacing: .2em; font-size: 17px; color: #E8F5FF; text-shadow: 0 0 10px rgba(110,205,255,.8); text-transform: uppercase; }
+  [data-theme="cockpit"] .top .brand::after { content: "● ONLINE"; margin-left: 12px; font: 700 10px "Rajdhani", sans-serif; letter-spacing: .24em; color: #6df0a0; text-shadow: 0 0 6px rgba(109,240,160,.8); vertical-align: middle; }
+  [data-theme="cockpit"] .sec-h { font-family: "Orbitron", "Rajdhani", sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #7fe3ff; }
+  [data-theme="cockpit"] .sec-h::after { content: ""; flex: 1; height: 1px; margin-left: 8px; background: linear-gradient(90deg, rgba(127,227,255,.8), transparent); }
   [data-theme="cockpit"] .tabbar { background: transparent; border: 0; box-shadow: none; gap: 4px; overflow: visible; }
-  [data-theme="cockpit"] .tabbar button { clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%); background: rgba(255,255,255,.7); border: 0; font-family: "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #3d6585; }
-  [data-theme="cockpit"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #2db4ea, #0b72ab); color: #fff; }
+  [data-theme="cockpit"] .tabbar button { clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%); background: rgba(40,110,190,.45); border: 0; font-family: "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #BFE6FF; }
+  [data-theme="cockpit"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; font-weight: 700; }
   [data-theme="cockpit"] .chip { clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%); border-radius: 0; padding: 4px 16px; }
   [data-theme="cockpit"] .titem { border-left: 3px solid transparent; }
-  [data-theme="cockpit"] .titem:hover { background: linear-gradient(90deg, rgba(15,143,196,.14), transparent); border-left-color: #0F8FC4; }
-  [data-theme="cockpit"] .titem.doing { border-left-color: #E8742F; background: linear-gradient(90deg, rgba(232,116,47,.12), transparent); }
-  [data-theme="cockpit"] .titem.ai-task { border-left-color: #6A62D6; }
-  [data-theme="cockpit"] .taskcard { border-left: 3px solid #0F8FC4; }
-  [data-theme="cockpit"] .tl-col { background-color: rgba(255,255,255,.78); }
-  [data-theme="cockpit"] .tl-col.is-today { background-color: rgba(255,255,255,.9); }
-  [data-theme="cockpit"] .tl-now { background: #E8742F; }
+  [data-theme="cockpit"] .titem:hover { background: linear-gradient(90deg, rgba(110,205,255,.2), transparent); border-left-color: #7fe3ff; }
+  [data-theme="cockpit"] .titem.doing { border-left-color: #FFA445; background: linear-gradient(90deg, rgba(255,164,69,.22), transparent); }
+  [data-theme="cockpit"] .titem.ai-task { border-left-color: #ABA0FF; }
+  [data-theme="cockpit"] .taskcard { border-left: 3px solid #7fe3ff; }
+  [data-theme="cockpit"] .tl-col { background-color: rgba(10,28,76,.5); }
+  [data-theme="cockpit"] .tl-col.is-today { background-color: rgba(20,60,130,.55); }
+  [data-theme="cockpit"] .tl-now { background: #FFA445; box-shadow: 0 0 8px rgba(255,164,69,.9); }
   [data-theme="cockpit"] .gh, [data-theme="cockpit"] .tl-day .gh.lane-h { font-family: "Rajdhani", sans-serif; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; }
-  [data-theme="cockpit"] .tl-day .gh.lane-h.ai { color: #6A62D6; }
-  [data-theme="cockpit"] .quickadd button[type=submit] { background: linear-gradient(180deg, #2db4ea, #0b72ab); color: #fff; border-radius: 0; }
-  [data-theme="cockpit"] .toast { border-radius: 0; background: #0A2540; }
+  [data-theme="cockpit"] .tl-day .gh.lane-h.ai { color: #ABA0FF; }
+  [data-theme="cockpit"] .quickadd button[type=submit] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; border-radius: 0; }
+  [data-theme="cockpit"] .chip.soft, [data-theme="cockpit"] .chip { background: rgba(70,160,235,.28); border: 1px solid rgba(120,215,255,.55); color: #E8F5FF; }
+  [data-theme="cockpit"] .seg { background: rgba(8,22,64,.7); border-color: rgba(120,215,255,.5); }
+  [data-theme="cockpit"] .seg button[aria-pressed="true"], [data-theme="cockpit"] .seg button.on, [data-theme="cockpit"] .seg button[aria-selected="true"] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; }
+  [data-theme="cockpit"] .tl-ad.is-today { background: rgba(255,164,69,.28); color: #fff; }
+  [data-theme="cockpit"] .carry-alert { background: rgba(255,127,152,.18); border-color: rgba(255,127,152,.7); color: #FFD6DE; }
+  [data-theme="cockpit"] .toast { border-radius: 0; background: rgba(8,22,64,.95); border: 1px solid #7fe3ff; color: #E8F5FF; }
 }
 </style>
 </head>

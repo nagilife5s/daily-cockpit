@@ -1695,27 +1695,27 @@ dcApplyLook();
      面の中だけ明るい配色に戻す（トークンを面ごとに上書き）。外側（ヘッダー・タブ・Setup）は暗いまま */
   [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] .week-main > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section,
   [data-theme="cockpit"] .card, [data-theme="cockpit"] .taskpicker, [data-theme="cockpit"] .tdy-sec {
-    --ink: #0E2744; --ink-2: #34506D; --ink-3: #57728C; --line: rgba(30,120,190,.34); --card: rgba(255,255,255,.78);
-    --c-events: #0F7FB8; --c-trip: #C0701F; --c-leave: #C93B58; --c-roster: #5C54C8;
-    --sch-higashi: #C1503A; --sch-meisei: #1F8A72; --sch-kenritsu: #4B5A67;
-    --g-1: #4F8A3A; --g-2: #1F8F80; --g-3: #3A78A8; --g-tobi: #A08A3C;
-    --task: #0F7FB8; --task-soft: #E3F1FC; --mixbase: white; color-scheme: light; color: var(--ink);
+    --ink: #EAF8FF; --ink-2: #C6E6F5; --ink-3: #9CCBE2; --line: rgba(140,225,255,.42); --card: rgba(6,36,70,.5);
+    --c-events: #6AD3FF; --c-trip: #FFB45A; --c-leave: #FF8BA0; --c-roster: #B4AAFF;
+    --sch-higashi: #FF8A6E; --sch-meisei: #4FD1B8; --sch-kenritsu: #A9BCCB;
+    --g-1: #98DB74; --g-2: #55D6BE; --g-3: #74BDFF; --g-tobi: #E6CC6E;
+    --task: #6AD3FF; --task-soft: rgba(90,200,250,.22); --mixbase: #0E4A78; color-scheme: dark; color: var(--ink);
   }
   [data-theme="cockpit"] .week-side > section, [data-theme="cockpit"] .week-main > section, [data-theme="cockpit"] #pane-pc > section, [data-theme="cockpit"] #pane-sp > section {
     position: relative; padding: 10px 16px 12px; margin-bottom: 12px;
-    background: linear-gradient(155deg, #F7FBFF, #E2EFFA 60%, #D6E8F7);
-    border: 1px solid rgba(40,140,210,.75); box-shadow: inset 0 0 0 1px rgba(255,255,255,.9), inset 0 -14px 24px -18px rgba(30,120,190,.35);
+    background: linear-gradient(160deg, #2C86B8, #1B6593 55%, #144E7C);
+    border: 1px solid #66D2F5; box-shadow: inset 0 0 0 1px rgba(170,235,255,.35), inset 0 0 26px rgba(120,220,255,.18);
     clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
   }
   [data-theme="cockpit"] .tdy-sec { padding: 10px 16px 12px; margin-bottom: 12px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
   [data-theme="cockpit"] .card, [data-theme="cockpit"] .taskpicker, [data-theme="cockpit"] .tdy-sec {
-    position: relative; background: linear-gradient(155deg, #F7FBFF, #E4F0FA); border: 1px solid rgba(40,140,210,.6); box-shadow: none;
+    position: relative; background: linear-gradient(160deg, #2A82B3, #17598A); border: 1px solid rgba(102,210,245,.8); box-shadow: inset 0 0 18px rgba(120,220,255,.15);
   }
   [data-theme="cockpit"] .week-side > section::before, [data-theme="cockpit"] .week-main > section::before, [data-theme="cockpit"] #pane-pc > section::before, [data-theme="cockpit"] #pane-sp > section::before {
-    content: ""; position: absolute; left: 0; top: 0; width: 64px; height: 3px; background: linear-gradient(90deg, #1E9BE0, transparent); pointer-events: none;
+    content: ""; position: absolute; left: 0; top: 0; width: 64px; height: 3px; background: linear-gradient(90deg, #9BEBFF, transparent); box-shadow: 0 0 8px rgba(155,235,255,.9); pointer-events: none;
   }
   [data-theme="cockpit"] .week-side > section::after, [data-theme="cockpit"] .week-main > section::after, [data-theme="cockpit"] #pane-pc > section::after, [data-theme="cockpit"] #pane-sp > section::after {
-    content: ""; position: absolute; right: 22px; bottom: 5px; width: 34px; height: 4px; background: repeating-linear-gradient(90deg, #F08A2C 0 6px, transparent 6px 9px); pointer-events: none; opacity: .9;
+    content: ""; position: absolute; right: 22px; bottom: 5px; width: 34px; height: 4px; background: repeating-linear-gradient(90deg, #FFA445 0 6px, transparent 6px 9px); pointer-events: none; opacity: .95; box-shadow: 0 0 6px rgba(255,164,69,.6);
   }
   /* 前方の照準リング（全体の飾り）。クリックは通す */
   [data-theme="cockpit"] body::before {
@@ -1731,30 +1731,30 @@ dcApplyLook();
   [data-theme="cockpit"] .top .brand::after { content: "● ONLINE"; margin-left: 12px; font: 700 10px "Rajdhani", sans-serif; letter-spacing: .24em; color: #6df0a0; text-shadow: 0 0 6px rgba(109,240,160,.8); vertical-align: middle; }
   [data-theme="cockpit"] .sec-h { font-family: "Orbitron", "Rajdhani", sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #7fe3ff; }
   [data-theme="cockpit"] .sec-h::after { content: ""; flex: 1; height: 1px; margin-left: 8px; background: linear-gradient(90deg, rgba(127,227,255,.8), transparent); }
-  [data-theme="cockpit"] section .sec-h, [data-theme="cockpit"] .card .sec-h, [data-theme="cockpit"] .tdy-sec .sec-h { color: #0B6FA8; }
-  [data-theme="cockpit"] section .sec-h::after { background: linear-gradient(90deg, rgba(30,130,200,.7), transparent); }
+  [data-theme="cockpit"] section .sec-h, [data-theme="cockpit"] .card .sec-h, [data-theme="cockpit"] .tdy-sec .sec-h { color: #A8F0FF; }
+  [data-theme="cockpit"] section .sec-h::after { background: linear-gradient(90deg, rgba(168,240,255,.8), transparent); }
   [data-theme="cockpit"] .tabbar { background: transparent; border: 0; box-shadow: none; gap: 4px; overflow: visible; }
   [data-theme="cockpit"] .tabbar button { clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%); background: rgba(40,110,190,.45); border: 0; font-family: "Rajdhani", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #BFE6FF; }
   [data-theme="cockpit"] .tabbar button[aria-selected="true"] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; font-weight: 700; }
   [data-theme="cockpit"] .chip { clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%); border-radius: 0; padding: 4px 16px; }
   [data-theme="cockpit"] .titem { border-left: 3px solid transparent; }
-  [data-theme="cockpit"] .titem:hover { background: linear-gradient(90deg, rgba(30,140,210,.16), transparent); border-left-color: #1E9BE0; }
-  [data-theme="cockpit"] .titem.doing { border-left-color: #F08A2C; background: linear-gradient(90deg, rgba(240,138,44,.2), transparent); }
-  [data-theme="cockpit"] .titem.ai-task { border-left-color: #7B6FE0; }
-  [data-theme="cockpit"] .taskcard { border-left: 3px solid #1E9BE0; }
-  [data-theme="cockpit"] .tl-col { background-color: rgba(255,255,255,.6); }
-  [data-theme="cockpit"] .tl-col.is-today { background-color: rgba(255,246,228,.9); }
+  [data-theme="cockpit"] .titem:hover { background: linear-gradient(90deg, rgba(140,225,255,.22), transparent); border-left-color: #9BEBFF; }
+  [data-theme="cockpit"] .titem.doing { border-left-color: #FFA445; background: linear-gradient(90deg, rgba(255,164,69,.25), transparent); }
+  [data-theme="cockpit"] .titem.ai-task { border-left-color: #B4AAFF; }
+  [data-theme="cockpit"] .taskcard { border-left: 3px solid #9BEBFF; }
+  [data-theme="cockpit"] .tl-col { background-color: rgba(5,32,64,.38); }
+  [data-theme="cockpit"] .tl-col.is-today { background-color: rgba(10,60,105,.5); }
   [data-theme="cockpit"] .tl-now { background: #FFA445; box-shadow: 0 0 8px rgba(255,164,69,.9); }
   [data-theme="cockpit"] .gh, [data-theme="cockpit"] .tl-day .gh.lane-h { font-family: "Rajdhani", sans-serif; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; }
-  [data-theme="cockpit"] .tl-day .gh.lane-h.ai { color: #5C54C8; }
+  [data-theme="cockpit"] .tl-day .gh.lane-h.ai { color: #B4AAFF; }
   [data-theme="cockpit"] .quickadd button[type=submit] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; border-radius: 0; }
   [data-theme="cockpit"] .chip.soft, [data-theme="cockpit"] .chip { background: rgba(70,160,235,.28); border: 1px solid rgba(120,215,255,.55); color: #E8F5FF; }
-  [data-theme="cockpit"] section .chip, [data-theme="cockpit"] section .chip.soft, [data-theme="cockpit"] .tdy-sec .chip, [data-theme="cockpit"] .card .chip, [data-theme="cockpit"] .card .chip.soft { background: rgba(40,130,200,.1); border-color: rgba(40,130,200,.45); color: var(--ink); }
+  [data-theme="cockpit"] section .chip, [data-theme="cockpit"] section .chip.soft, [data-theme="cockpit"] .tdy-sec .chip, [data-theme="cockpit"] .card .chip, [data-theme="cockpit"] .card .chip.soft { background: rgba(6,36,70,.5); border-color: rgba(140,225,255,.55); color: var(--ink); }
   [data-theme="cockpit"] .seg { background: rgba(8,22,64,.7); border-color: rgba(120,215,255,.5); }
-  [data-theme="cockpit"] section .seg { background: rgba(255,255,255,.85); border-color: rgba(40,130,200,.5); }
+  [data-theme="cockpit"] section .seg { background: rgba(6,36,70,.6); border-color: rgba(140,225,255,.55); }
   [data-theme="cockpit"] .seg button[aria-pressed="true"], [data-theme="cockpit"] .seg button.on, [data-theme="cockpit"] .seg button[aria-selected="true"] { background: linear-gradient(180deg, #FFB45A, #E8742F); color: #1b1030; }
-  [data-theme="cockpit"] .tl-ad.is-today { background: rgba(240,138,44,.28); color: var(--ink); }
-  [data-theme="cockpit"] .carry-alert { background: #FFE9EE; border-color: rgba(201,59,88,.6); color: #7A1D34; }
+  [data-theme="cockpit"] .tl-ad.is-today { background: rgba(255,164,69,.3); color: var(--ink); }
+  [data-theme="cockpit"] .carry-alert { background: rgba(120,20,50,.55); border-color: rgba(255,139,160,.8); color: #FFE3E9; }
   [data-theme="cockpit"] .toast { border-radius: 0; background: rgba(8,22,64,.97); border: 1px solid #7fe3ff; color: #E8F5FF; }
 }
 </style>

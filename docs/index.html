@@ -18,7 +18,7 @@ var DC_WALLS = {
             { id: 'castle', name: '城',             css: 'url(themes/bg-journey-castle.jpg)' },
             { id: 'sea',    name: '海',             css: 'url(themes/bg-journey-sea.jpg)' }],
   cockpit: [{ id: 'freedom', name: 'フリーダム（アニメ）', css: 'url(themes/bg-cockpit-freedom.jpg)' },
-            { id: 'real',    name: 'フリーダム（リアル）', css: 'url(themes/bg-cockpit-freedom-real.jpg)' }}]
+            { id: 'real',    name: 'フリーダム（リアル）', css: 'url(themes/bg-cockpit-freedom-real.jpg)' }]
 };
 function dcLs(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function dcLsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }

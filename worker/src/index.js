@@ -340,6 +340,7 @@ function mapTask_(pg) {
     status,
     date: d ? d.date : null,
     period,
+    time: d && d.time ? d.time : null,   /* 校時に限らず、置いた時刻（7:00 など）をそのまま返す */
     deadline: deadline ? deadline.date : null,
     kind: propSelect_(p['タスク種別']),
     assignee: propSelect_(p['担当']) === 'AI' ? 'AI' : '自分',
@@ -723,8 +724,8 @@ function createApi(env) {
         journal[d.date] = mapJournal_(pg);
       });
       const weekTasks = allTasks
-        .filter(t => t.date && days.indexOf(t.date) >= 0 && t.period)
-        .map(t => ({ id: t.id, name: t.name, date: t.date, period: t.period, status: t.status }));
+        .filter(t => t.date && days.indexOf(t.date) >= 0 && (t.period || t.time))
+        .map(t => ({ id: t.id, name: t.name, date: t.date, period: t.period, time: t.time, status: t.status }));
 
       return {
         weekStart, days, schedule,

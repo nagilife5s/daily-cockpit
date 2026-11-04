@@ -615,6 +615,11 @@ dcApplyLook();
   .tl-ev.tl-group > .taskcard .nm { -webkit-line-clamp: 1; }
   .tl-ev.tl-group .grp-n { position: absolute; right: 4px; top: 1px; font-size: 10px; font-weight: 700; line-height: 14px; padding: 0 5px; border-radius: 7px; background: var(--task); color: #fff; pointer-events: none; z-index: 2; }
   .tl-ev.tl-group:hover { height: auto !important; min-height: var(--h); max-height: 340px; z-index: 30; background: var(--card); box-shadow: 0 10px 26px -10px rgba(0,0,0,.45); }
+  /* Day のタスクレーン: 1件ずつ全幅で縦に並べ、名前は折り返して全部見せる */
+  .tl-ev.tl-flow { left: 0 !important; width: 100% !important; height: auto; overflow: visible; }
+  .tl-ev.tl-flow > .taskcard { overflow: visible; flex: 1 1 auto; min-height: 30px; }
+  .tl-ev.tl-flow > .taskcard .nm { display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; }
+  .tl-ev.tl-flow > .taskcard .tm { font-weight: 600; color: var(--ink-2); }
   .tl-day .tl-col.lane-me, .tl-day .tl-col.lane-ai { border-left: 1px solid var(--line); }
   .tl-day .tl-col.lane-ai { background-color: color-mix(in oklch, var(--c-roster) 5%, var(--card)); }
   .tl-day .gh.lane-h { justify-content: center; font-size: var(--fs-sm); color: var(--ink-2); border-left: 1px solid var(--line); }
@@ -2591,9 +2596,10 @@ var Store = {
     if (IS_GAS) { enqueueWrite('createTask', [data], done); return; }
     var tm = String(data.date || '').slice(11, 16), per = null;
     for (var k = 1; k <= 6; k++) if (periodTimeStr(k) === tm) per = k;
+    var tmH = tm ? String(+tm.slice(0, 2)) + ':' + tm.slice(3) : null;
     setTimeout(function () {
       done({ id: 'tk-new-' + Date.now(), name: data.name, status: 'Not Started',
-             date: data.date ? String(data.date).slice(0, 10) : null, period: per, deadline: null,
+             date: data.date ? String(data.date).slice(0, 10) : null, period: per, time: tmH, deadline: null,
              kind: data.kind || null, assignee: data.assignee || '自分', mikomi: null, spentMin: 0, order: null, startedAt: null, projectIds: [] });
     }, 300);
   },
@@ -3295,9 +3301,9 @@ function timelineItems(days, schedule, tasks) {
   });
   (tasks || []).forEach(function (task) {
     var di = days.indexOf(task.date);
-    if (di < 0 || !task.period) return;
+    if (di < 0 || !isPlaced(task)) return;
     if (task.status === 'Done') return;           /* 完了したら時間割からは消す（2026-09-15） */
-    var s = PERIOD_MIN[task.period - 1];
+    var s = taskMin(task);
     perDay[di].push({ kind: 'task', task: task, start: s, end: s + PERIOD_LEN });
   });
   perDay.forEach(packColumns);
@@ -3399,6 +3405,16 @@ function timelineBox(it, lo) {
   if (len < TL_SHORT_MIN) box.classList.add('is-short');
   if (len <= TL_COMPACT_MIN) box.classList.add('is-compact');
   var card;
+  if (it.kind === 'task' && it.flow) {   /* Day のタスクレーン: 高さは中身まかせ。位置は reflowTaskLanes が決める */
+    box.classList.add('tl-flow');
+    box.style.height = '';
+    card = taskCard(it.task);
+    var fbd = card.querySelector('.bd');
+    if (fbd) fbd.insertBefore(el('div', 'tm', minToHm(it.start)), fbd.firstChild);
+    box.dataset.nat = String((it.start - lo) * TL_PX_PER_MIN);
+    box.appendChild(card);
+    return box;
+  }
   if (it.kind === 'taskgroup') {       /* 同じ校時に重なったタスクは横に割らず、枠の中で縦に積む（2026-10-23） */
     box.classList.add('tl-group');
     box.style.setProperty('--h', box.style.height);
@@ -3447,6 +3463,20 @@ function renderTimeline(view) {
   if (view === 'day') data.perDay.forEach(layoutDayZones);
   var range = timelineRange(data.perDay);
   var lo = range[0], H = (range[1] - range[0]) * TL_PX_PER_MIN;
+  /* Day: 予定／Focus／Autopilot の3レーンに分ける。タスクのレーンは時刻の位置を基準に、重なったら下へずらして
+     1件ずつ全部見せる（縦に長くなってよい。2026-11-05）。高さは描いたあとに実測して詰め直す（下の reflowTaskLanes） */
+  var dayLanes = null;
+  if (view === 'day') {
+    var all0 = data.perDay[0];
+    dayLanes = [
+      all0.filter(function (it) { return it.kind !== 'task'; }),
+      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee !== 'AI'; }),
+      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee === 'AI'; })
+    ];
+    [1, 2].forEach(function (li) {
+      dayLanes[li].sort(function (a, b) { return (a.start - b.start) || bySort(a.task, b.task); });
+    });
+  }
   var hasAllDay = data.allDay.some(function (a) { return a.length; });
   g.classList.toggle('no-allday', !hasAllDay);
   var bodyRow = hasAllDay ? '3' : '2';
@@ -3544,26 +3574,14 @@ function renderTimeline(view) {
   g.appendChild(axis);
 
   var splitDays = {};
-  /* Day は予定／自分のタスク／AIのタスクの3レーンに振り分けてそれぞれ詰め直す。Week は従来どおり日ごとに1列 */
+  /* Day は予定／Focus／Autopilot の3レーン。Week は従来どおり日ごとに1列 */
   var colSets = [];
   if (view === 'day') {
-    var all0 = data.perDay[0];
-    var lanes = [
-      all0.filter(function (it) { return it.kind !== 'task'; }),
-      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee !== 'AI'; }),
-      all0.filter(function (it) { return it.kind === 'task' && it.task.assignee === 'AI'; })
-    ];
-    [1, 2].forEach(function (li) {                  /* タスクのレーンは校時ごとに1つの箱へまとめる */
-      var byP = {}, grouped = [];
-      lanes[li].forEach(function (it) {
-        var g0 = byP[it.start];
-        if (!g0) { g0 = byP[it.start] = { kind: 'taskgroup', tasks: [], start: it.start, end: it.end }; grouped.push(g0); }
-        g0.tasks.push(it.task);
-      });
-      grouped.forEach(function (g1) { g1.tasks.sort(bySort); });
-      lanes[li] = grouped;
+    var lanes = dayLanes;
+    lanes.forEach(function (l, li) {
+      l.forEach(function (it) { it.zoneL = 0; it.zoneW = 100; it.level = 0; if (li > 0) { it.x = 0; it.w = 1; it.cols = 1; } });
+      if (li === 0) packColumns(l);
     });
-    lanes.forEach(function (l) { l.forEach(function (it) { it.zoneL = 0; it.zoneW = 100; it.level = 0; }); packColumns(l); });
     layoutDayZones(lanes[0]);                       /* 長い予定を左の帯へ寄せるのは予定レーンだけ */
     colSets = lanes.map(function (l, i) { return { items: l, day: days[0], lane: ['ev', 'me', 'ai'][i], gc: i + 2 }; });
   } else {
@@ -3575,9 +3593,10 @@ function renderTimeline(view) {
     col.dataset.day = cs.day;                     /* 空白クリック・ドロップの行き先 */
     col.dataset.lo = lo;
     if (cs.lane) { col.dataset.lane = cs.lane; col.classList.add('lane-' + cs.lane); }
-    col.title = 'クリックでタスクを割り当て（近い校時に置きます）';
+    col.title = 'クリックでタスクを割り当て（クリックした時刻に置きます）';
     if (isTodayCol(cs.day)) col.classList.add('is-today');
     cs.items.forEach(function (it) {
+      if (cs.lane === 'me' || cs.lane === 'ai') it.flow = true;
       if (it.cols > 1 && cs.d != null) splitDays[cs.d] = true;
       col.appendChild(timelineBox(it, lo));
     });
@@ -3592,6 +3611,8 @@ function renderTimeline(view) {
   g.style.gridTemplateColumns = view === 'day' ? '52px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr)' : '52px ' + [0, 1, 2, 3, 4].map(function (i) {
     return (splitDays[i] ? SPLIT_COL_FR : 1) + 'fr';
   }).join(' ');
+
+  if (view === 'day') reflowTaskLanes(g, H);
 
   /* 現在地の1行（時刻で判定。短縮日課の日も実際の時刻で「今／次」を出す） */
   var nlp = $('#nowline');
@@ -3611,6 +3632,24 @@ function renderTimeline(view) {
     }
   }
   return days;
+}
+
+/* Day のタスクレーン: 各タスクを本来の時刻の位置に置き、前のタスクと重なるなら直下へずらす。
+   描画後の実測の高さを使うので、名前が長くて折り返しても重ならない。列の高さは一番長いレーンにそろえる */
+function reflowTaskLanes(g, H0) {
+  var maxH = H0;
+  $all('.tl-col.lane-me, .tl-col.lane-ai', g).forEach(function (col) {
+    var cur = 0;
+    $all('.tl-ev.tl-flow', col).forEach(function (box) {
+      var top = Math.max(+box.dataset.nat, cur);
+      box.style.top = top + 'px';
+      cur = top + box.offsetHeight + 4;
+    });
+    maxH = Math.max(maxH, cur);
+  });
+  if (maxH > H0) {
+    $all('.tl-col, .tl-axis', g).forEach(function (n) { n.style.height = maxH + 'px'; });
+  }
 }
 
 /* タイムラインの列の中の y 座標 → 分 */
@@ -3939,7 +3978,7 @@ function taskCard(task) {
   if (sl) bd.appendChild(el('div', 'st', sl));
   c.appendChild(bd);
   /* ✕ コマから外す（日付は残して、校時の割り当てだけ消す。2026-10-23） */
-  if (task.period && task.status !== 'Done') {
+  if (isPlaced(task) && task.status !== 'Done') {
     var un = el('button', 'unplace', '✕');
     un.type = 'button';
     un.title = 'コマから外す（日付は残ります）';
@@ -4168,11 +4207,11 @@ function todayStr() { return realToday(); }
 function setTaskDate(t, d) {
   var snap = taskSnap(t);
   t.date = d;
-  if (t.period) t.period = null;        /* 日付のみで書くのでコマ割り当ての時刻は消える */
+  t.period = null; t.time = null;       /* 日付のみで書くのでコマ割り当ての時刻は消える */
   syncWeekTask(t);
   Store.updateTask(t.id, { date: d });
   rerenderTasks();
-  showToast('「' + t.name + '」を' + (d ? mdw(d) : '日付なし') + 'に移しました' + (snap.period ? '（コマは外れました）' : ''),
+  showToast('「' + t.name + '」を' + (d ? mdw(d) : '日付なし') + 'に移しました' + ((snap.period || snap.time) ? '（コマは外れました）' : ''),
             function () { restoreTask(t, snap); });
 }
 function rerenderTasks() {
@@ -4363,19 +4402,37 @@ function finishTask(t) { var snap = taskSnap(t); settleSession(t); t.status = 'D
 
 /* ==== 取り消し（Undo）: 直前のタスク状態を控えておき、トーストから戻す ==== */
 function taskSnap(t) {
-  return { assignee: t.assignee || '自分', status: t.status, date: t.date, period: t.period, kind: t.kind, spentMin: t.spentMin || 0, startedAt: t.startedAt || null };
+  return { assignee: t.assignee || '自分', status: t.status, date: t.date, period: t.period, time: t.time || null, kind: t.kind, spentMin: t.spentMin || 0, startedAt: t.startedAt || null };
 }
+/* タスクの置き場所は「時刻」（t.time = 'H:mm'）。標準時程の開始と一致するときだけ t.period（校時）も入る（2026-11-05）。
+   校時だけ持つ古い形（time 無し）も読めるよう、位置の取り出しは taskMin に集める */
+function taskMin(t) {
+  if (t.time) return hmToMin(t.time);
+  if (t.period) return PERIOD_MIN[t.period - 1];
+  return null;
+}
+function isPlaced(t) { return taskMin(t) != null; }
+function periodAtMin(m) { var i = PERIOD_MIN.indexOf(m); return i >= 0 ? i + 1 : null; }
+/* ドロップ・クリックした位置（分）→ 置く時刻。校時の開始に近ければそこへ吸い付け、それ以外は15分刻み */
+function snapTaskMin(m) {
+  for (var i = 0; i < PERIOD_MIN.length; i++) if (Math.abs(m - PERIOD_MIN[i]) <= 8) return PERIOD_MIN[i];
+  return Math.max(0, Math.min(24 * 60 - 15, Math.round(m / 15) * 15));
+}
+function taskPlaceLabel(t) { return t.period ? t.period + '校時' : (t.time || ''); }
 function taskDateValue(t) {   /* Notion に書く 実施予定日 の値 */
   if (!t.date) return null;
-  return t.period ? t.date + 'T' + periodTimeStr(t.period) + ':00+09:00' : t.date;
+  var m = taskMin(t);
+  if (m == null) return t.date;
+  var hm = minToHm(m).split(':');
+  return t.date + 'T' + ('0' + hm[0]).slice(-2) + ':' + hm[1] + ':00+09:00';
 }
 function syncWeekTask(t) {    /* 週グリッド用の写しを合わせる（既存はその場で更新。コマ内の順序を保つ） */
   if (!state.week) return;
   var list = state.week.tasks || [];
   var i = -1;
   list.some(function (x, k) { if (x.id === t.id) { i = k; return true; } return false; });
-  if (t.date && t.period) {
-    var rec = { id: t.id, name: t.name, date: t.date, period: t.period, status: t.status };
+  if (t.date && isPlaced(t)) {
+    var rec = { id: t.id, name: t.name, date: t.date, period: t.period, time: t.time || null, status: t.status };
     if (i >= 0) list[i] = rec; else list.push(rec);
   } else if (i >= 0) {
     list.splice(i, 1);
@@ -4383,7 +4440,7 @@ function syncWeekTask(t) {    /* 週グリッド用の写しを合わせる（�
   state.week.tasks = list;
 }
 function restoreTask(t, snap) {
-  t.status = snap.status; t.date = snap.date; t.period = snap.period; t.kind = snap.kind;
+  t.status = snap.status; t.date = snap.date; t.period = snap.period; t.time = snap.time || null; t.kind = snap.kind;
   t.spentMin = snap.spentMin; t.startedAt = snap.startedAt;
   if (snap.assignee) t.assignee = snap.assignee;
   syncWeekTask(t);
@@ -4491,7 +4548,7 @@ function taskItem(task, opts) {
   });
 
   var meta = el('span', 'meta');
-  if (task.period) meta.appendChild(el('span', null, task.period + '校時'));
+  if (isPlaced(task)) meta.appendChild(el('span', null, taskPlaceLabel(task)));
   if (task.mikomi) meta.appendChild(el('span', null, '~' + fmtMin(task.mikomi)));
   var sp = spentOf(task);
   if (sp > 0) meta.appendChild(el('span', 'spent', (task.status === '中断' ? '⏸計' : '計') + fmtMin(sp)));
@@ -4626,6 +4683,43 @@ function bySort(a, b) {
    GAS 実機で「モックでは動くのにドラッグだけ効かない」事象があり、要素に
    付けたリスナーはコンテナの差し替えで死ぬため、差し替わらない document に
    一度だけ付ける。⠿ を掴んだ行の親 .tasklist がその場で対象になる */
+/* ドラッグ中、指（ポインタ）が画面の上下の端に近づいたら表をスクロールする（2026-11-05。
+   つかんだまま画面の端まで来ると上に戻れなかった）。スクロールすると動かしたカードの元の位置もずれるので、
+   tick で位置と行き先を取り直してもらう */
+function dragAutoScroll(tick) {
+  var g = document.getElementById('grid');
+  var sc = null;
+  for (var n = g; n && n !== document.body; n = n.parentElement) {
+    var cs = getComputedStyle(n);
+    if (/(auto|scroll)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 1) { sc = n; break; }
+  }
+  var root = document.scrollingElement || document.documentElement;
+  var y = -1, raf = 0, stopped = false;
+  function edges() {
+    if (!sc) return [0, window.innerHeight];
+    var r = sc.getBoundingClientRect();
+    return [Math.max(0, r.top), Math.min(window.innerHeight, r.bottom)];
+  }
+  function loop() {
+    raf = 0;
+    if (stopped) return;
+    var e = edges(), zone = 90, v = 0;
+    if (y >= 0) {
+      if (y < e[0] + zone) v = -Math.min(1, (e[0] + zone - y) / zone) * 13;
+      else if (y > e[1] - zone) v = Math.min(1, (y - (e[1] - zone)) / zone) * 13;
+    }
+    if (v) {
+      var t = sc || root, before = t.scrollTop;
+      t.scrollTop = before + v;
+      if (t.scrollTop !== before) tick();
+      raf = requestAnimationFrame(loop);
+    }
+  }
+  return {
+    move: function (clientY) { y = clientY; if (!raf && !stopped) raf = requestAnimationFrame(loop); },
+    stop: function () { stopped = true; if (raf) cancelAnimationFrame(raf); raf = 0; }
+  };
+}
 function enableSort(list) { /* 委任化により登録は不要。呼び出し互換のため残す */ }
 document.addEventListener('pointerdown', function (e) {
     var h = e.target.closest('.drag');
@@ -4640,6 +4734,8 @@ document.addEventListener('pointerdown', function (e) {
        裏で行う。ずれた分は grabY を補正して見た目を切らさない。
        他の行は FLIP（移動前後の差分から逆向き transform → 0 へ遷移）で滑らせる */
     var grabY = e.clientY, sx0 = e.clientX;
+    var grabOff = e.clientY - row.getBoundingClientRect().top, lastTy = 0, lastEv = { clientX: e.clientX, clientY: e.clientY };
+    var auto = dragAutoScroll(function () { onMove(lastEv); });
     row.classList.add('dragging');
 
     function siblings() {
@@ -4652,7 +4748,7 @@ document.addEventListener('pointerdown', function (e) {
       var rowTopBefore = row.offsetTop;
       if (next) list.insertBefore(row, next);
       else list.appendChild(row);
-      grabY += row.offsetTop - rowTopBefore;      /* 追従位置を維持 */
+      grabY += row.offsetTop - rowTopBefore;      /* （追従位置は placeRow が毎回実測するので、これは互換のため） */
       others.forEach(function (r, i) {
         var d = before[i] - r.getBoundingClientRect().top;
         if (!d) return;
@@ -4673,19 +4769,27 @@ document.addEventListener('pointerdown', function (e) {
       var below = document.elementFromPoint(ev.clientX, ev.clientY);
       row.style.pointerEvents = prev;
       var tc = below && below.closest ? below.closest('#grid .tl-col') : null;
-      if (tc) return { el: tc, day: tc.dataset.day, p: nearestPeriod(tlMinAt(tc, ev.clientY)), lane: tc.dataset.lane || null };
+      if (tc) { var m0 = snapTaskMin(tlMinAt(tc, ev.clientY)); return { el: tc, day: tc.dataset.day, p: nearestPeriod(m0), min: m0, lane: tc.dataset.lane || null }; }
       var sc = below && below.closest ? below.closest('#grid .slot, #grid .cellbox') : null;
       if (sc && sc.dataset.di != null && state.week) return { el: sc, day: state.week.days[+sc.dataset.di], p: +sc.dataset.p, lane: null };
       return null;
     }
+    function placeRow(ev) {                       /* 指の位置にカードを合わせる（スクロールで元の位置がずれても追従） */
+      var nat = row.getBoundingClientRect().top - lastTy;
+      lastTy = ev.clientY - grabOff - nat;
+      row.style.transform = 'translate(' + (dropTo ? ev.clientX - sx0 : 0) + 'px,' + lastTy + 'px) scale(1.015)';
+    }
     function onMove(ev) {
-      row.style.transform = 'translate(' + (dropTo ? ev.clientX - sx0 : 0) + 'px,' + (ev.clientY - grabY) + 'px) scale(1.015)';
+      lastEv = { clientX: ev.clientX, clientY: ev.clientY };
+      auto.move(ev.clientY);
+      placeRow(ev);
       var hit = dropTargetAt(ev);
       if (dropTo && (!hit || hit.el !== dropTo.el)) { dropTo.el.classList.remove('drop-hint'); hideTlDrop(); }
       dropTo = hit;
+      placeRow(ev);
       if (dropTo) {
         dropTo.el.classList.add('drop-hint');
-        if (dropTo.el.classList.contains('tl-col')) showTlDrop(dropTo.el, dropTo.p);
+        if (dropTo.el.classList.contains('tl-col')) showTaskDrop(dropTo.el, dropTo.min);
         return;                                   /* 時間割の上では並び替えない */
       }
       var rows = siblings();
@@ -4695,7 +4799,7 @@ document.addEventListener('pointerdown', function (e) {
         if (ev.clientY < rc.top + rc.height / 2) { next = rows[i]; break; }
       }
       if (next !== row.nextElementSibling || (!next && row !== list.lastElementChild)) {
-        if (!(next === null && row === list.lastElementChild)) moveWithFlip(next);
+        if (!(next === null && row === list.lastElementChild)) { moveWithFlip(next); placeRow(ev); }
       }
     }
 
@@ -4713,6 +4817,7 @@ document.addEventListener('pointerdown', function (e) {
     }
 
     function onUp() {
+      auto.stop();
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
@@ -4721,7 +4826,7 @@ document.addEventListener('pointerdown', function (e) {
         siblings().forEach(function (r) { r.style.transition = ''; r.style.transform = ''; });
         row.classList.remove('dragging'); row.style.transition = ''; row.style.transform = '';
         var dt = DUMMY_TASKS.find(function (x) { return x.id === row.dataset.tid; });
-        if (dt && dt.status !== 'Done') assignTaskToSlot(dt, dropTo.day, dropTo.p, dropTo.lane);
+        if (dt && dt.status !== 'Done') assignTaskToSlot(dt, dropTo.day, dropTo.p, dropTo.lane, dropTo.min);
         else rerenderTasks();
         return;
       }
@@ -4788,7 +4893,7 @@ function renderDayTasks(pane, date) {
   var all = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
   /* Day では、Focus / Autopilot のコマに置いたタスク（校時あり・未完了）は左の表に出ているので、右の一覧からは隠す。
      コマから外す(✕)と一覧に戻る。Week・学校全体は全部出す（2026-11-05 本人要望） */
-  var hideOnGrid = function (t) { return state.gridMode === 'day' && t.period && isOpen(t); };
+  var hideOnGrid = function (t) { return state.gridMode === 'day' && isPlaced(t) && isOpen(t); };
   var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち' && !hideOnGrid(t); });
   var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち' && !hideOnGrid(t); });
   var done = all.filter(function (t) { return !isOpen(t); });
@@ -5225,11 +5330,11 @@ function buildTaskView(root, view) {
       bulk.addEventListener('click', function () {
         if (!confirm('積み残し ' + od.length + ' 件の実施予定日を今日（' + mdw(td) + '）に移しますか？')) return;
         var snaps = od.map(function (t) { return { t: t, snap: taskSnap(t) }; });
-        od.forEach(function (t) { t.date = td; if (t.period) t.period = null; syncWeekTask(t); });
+        od.forEach(function (t) { t.date = td; t.period = null; t.time = null; syncWeekTask(t); });
         Store.updateTasks(od.map(function (t) { return { id: t.id, patch: { date: td } }; }));   /* 1回の GAS 実行で */
         rerenderTasks();
         showToast(od.length + '件を今日へ移しました', function () {
-          snaps.forEach(function (x) { var t = x.t, sn = x.snap; t.date = sn.date; t.period = sn.period; syncWeekTask(t); });
+          snaps.forEach(function (x) { var t = x.t, sn = x.snap; t.date = sn.date; t.period = sn.period; t.time = sn.time || null; syncWeekTask(t); });
           Store.updateTasks(snaps.map(function (x) { return { id: x.t.id, patch: { date: taskDateValue(x.t) } }; }));
           rerenderTasks();
         });
@@ -5636,10 +5741,11 @@ function periodTimeStr(p) {            /* '8:35' → '08:35'（ISO用にゼロ�
   return ('0' + a[0]).slice(-2) + ':' + a[1];
 }
 
-function assignTaskToSlot(t, day, p, lane) {
+function assignTaskToSlot(t, day, p, lane, min) {
   var snap = taskSnap(t);
   t.date = day;
-  t.period = p;
+  if (min != null) { t.time = minToHm(min); t.period = periodAtMin(min); p = t.period; }   /* 時刻で置く（7:00 など） */
+  else { t.period = p; t.time = PERIOD_START[p - 1]; }
   var patch = null;
   if ((lane || pickerLane) === 'ai' && t.assignee !== 'AI') patch = 'AI';
   else if ((lane || pickerLane) === 'me' && t.assignee === 'AI') patch = '自分';
@@ -5648,7 +5754,7 @@ function assignTaskToSlot(t, day, p, lane) {
   Store.updateTask(t.id, patch ? { date: taskDateValue(t), assignee: patch } : { date: taskDateValue(t) });
   closeTaskPicker();
   withTransition(refresh);
-  showToast('「' + t.name + '」を' + mdw(day) + ' ' + p + '校時に置きました', function () { restoreTask(t, snap); });
+  showToast('「' + t.name + '」を' + mdw(day) + ' ' + taskPlaceLabel(t) + 'に置きました', function () { restoreTask(t, snap); });
 }
 
 /* ---- タスクの新規作成（2026-09-15）。名前だけ入れて Enter。種別は ▶次に取るべき行動リスト ----
@@ -5675,10 +5781,11 @@ function quickAddForm(placeholder, onSubmit) {
   });
   return f;
 }
-function createNewTask(name, day, p, assignee) {
-  if (assignee == null && p) assignee = pickerLane === 'ai' ? 'AI' : '自分';   /* AI の列から作ったらAI担当 */
-  var where = mdw(day) + (p ? ' ' + p + '校時' : '');
-  var date = taskDateValue({ date: day, period: p || null });
+function createNewTask(name, day, p, assignee, min) {
+  if (assignee == null && (p || min != null)) assignee = pickerLane === 'ai' ? 'AI' : '自分';   /* AI の列から作ったらAI担当 */
+  var tm = min != null ? minToHm(min) : (p ? PERIOD_START[p - 1] : null);
+  var where = mdw(day) + (min != null ? ' ' + (periodAtMin(min) ? periodAtMin(min) + '校時' : tm) : (p ? ' ' + p + '校時' : ''));
+  var date = taskDateValue({ date: day, time: tm, period: null });
   showToast('「' + name + '」を作成中…');
   Store.createTask({ name: name, date: date, kind: NEW_TASK_KIND, assignee: assignee || '自分' }, function (created) {
     if (!created || !created.id) return;
@@ -5707,20 +5814,20 @@ function pickerOutside(e) {
   if (pickerEl && !pickerEl.contains(e.target)) closeTaskPicker();
 }
 var pickerLane = null;   /* Day の「自分／AI」レーンから開いたときの行き先（2026-10-23） */
-function openTaskPicker(day, p, x, y) {
+function openTaskPicker(day, p, x, y, min) {
   closeTaskPicker();
   /* 候補＝その日に実施予定のタスクだけ（本人要望 2026-09-01: INBOX・積み残しは出さない） */
   var cands = DUMMY_TASKS.filter(function (t) {
-    return isOpen(t) && !t.period && t.kind !== '🗑ゴミ箱' && t.date === day;
+    return isOpen(t) && !isPlaced(t) && t.kind !== '🗑ゴミ箱' && t.date === day;
   });
   cands.sort(bySort);
 
   var pop = el('div', 'taskpicker card');
   pop.setAttribute('role', 'dialog');
-  pop.appendChild(el('h3', null, mdw(day) + ' ' + p + '校時に割り当て'));
+  pop.appendChild(el('h3', null, mdw(day) + ' ' + ((min != null && !periodAtMin(min)) ? minToHm(min) : p + '校時') + 'に割り当て'));
 
   /* このコマに置いてあるタスク（複数可）。「外す」で日付は残してコマだけ解除 */
-  var placed = DUMMY_TASKS.filter(function (t) { return isOpen(t) && t.date === day && t.period === p; });
+  var placed = DUMMY_TASKS.filter(function (t) { return isOpen(t) && t.date === day && taskMin(t) === (min != null ? min : PERIOD_MIN[p - 1]); });
   if (placed.length) {
     var pl = el('div', 'tp-placed');
     placed.forEach(function (t) {
@@ -5729,7 +5836,7 @@ function openTaskPicker(day, p, x, y) {
       var off = el('button', 'act', '外す');
       off.addEventListener('click', function () {
         setTaskDate(t, t.date);                        /* コマだけ外す（日付は維持） */
-        openTaskPicker(day, p, x, y);                  /* 開いたまま更新 */
+        openTaskPicker(day, p, x, y, min);             /* 開いたまま更新 */
       });
       r.appendChild(off);
       pl.appendChild(r);
@@ -5747,10 +5854,10 @@ function openTaskPicker(day, p, x, y) {
     if (t.kind === '☎連絡待ち') m.push('連絡待ち');
     if (m.length) b.appendChild(el('span', 'meta', m.join(' ')));
     b.addEventListener('click', function () {
-      assignTaskToSlot(t, day, p);
+      assignTaskToSlot(t, day, p, null, min);
       /* 1つ置いたら閉じず、続けて置けるように開き直す（候補が尽きたら閉じる） */
-      var rest = DUMMY_TASKS.some(function (x) { return isOpen(x) && !x.period && x.kind !== '🗑ゴミ箱' && x.date === day; });
-      if (rest) openTaskPicker(day, p, x, y);
+      var rest = DUMMY_TASKS.some(function (x) { return isOpen(x) && !isPlaced(x) && x.kind !== '🗑ゴミ箱' && x.date === day; });
+      if (rest) openTaskPicker(day, p, x, y, min);
     });
     listEl.appendChild(b);
   });
@@ -5758,7 +5865,7 @@ function openTaskPicker(day, p, x, y) {
 
   /* 遠回りしなくて済むよう、INBOX・積み残しは折り畳みで出せる（既定では閉じる） */
   var more = DUMMY_TASKS.filter(function (t) {
-    return isOpen(t) && !t.period && t.kind !== '🗑ゴミ箱' && t.date !== day && (!t.date || t.date < realToday());
+    return isOpen(t) && !isPlaced(t) && t.kind !== '🗑ゴミ箱' && t.date !== day && (!t.date || t.date < realToday());
   });
   if (more.length) {
     var moreBtn = el('button', 'tp-more', 'INBOX・積み残しから探す ▾（' + more.length + '）');
@@ -5769,7 +5876,7 @@ function openTaskPicker(day, p, x, y) {
         var b = el('button', 'tp-item');
         b.appendChild(el('span', 'tn', t.name));
         b.appendChild(el('span', 'meta', !t.date ? 'INBOX' : '積み残し ' + md(t.date)));
-        b.addEventListener('click', function () { assignTaskToSlot(t, day, p); openTaskPicker(day, p, x, y); });
+        b.addEventListener('click', function () { assignTaskToSlot(t, day, p, null, min); openTaskPicker(day, p, x, y, min); });
         listEl.appendChild(b);
       });
     });
@@ -5779,7 +5886,7 @@ function openTaskPicker(day, p, x, y) {
   /* タスクを新しく作ってこのコマに置く（2026-09-15） */
   pop.appendChild(quickAddForm('新しいタスクを作ってここに置く', function (name) {
     closeTaskPicker();
-    createNewTask(name, day, p);
+    createNewTask(name, day, p, undefined, min);
   }));
 
   /* 授業・予定の新規作成もここから（Phase 6） */
@@ -5826,12 +5933,17 @@ $('#tabs').addEventListener('keydown', function (e) {
 var suppressSlotClick = false;         /* ドラッグ直後の click を1回だけ無視する */
 /* 時間帯の表でドラッグ中に「この校時に入る」を見せる影（1つを使い回す） */
 var tlDropEl = null;
-function showTlDrop(col, p) {
+function showTlDrop(col, p) { showTlDropAt(col, PERIOD_MIN[p - 1], PERIOD_LEN, p + '校時'); }
+function showTlDropAt(col, startMin, lenMin, label) {
   if (!tlDropEl) tlDropEl = el('div', 'tl-drop');
-  tlDropEl.style.top = ((PERIOD_MIN[p - 1] - col.dataset.lo) * TL_PX_PER_MIN) + 'px';
-  tlDropEl.style.height = (PERIOD_LEN * TL_PX_PER_MIN) + 'px';
-  tlDropEl.textContent = p + '校時';
+  tlDropEl.style.top = ((startMin - col.dataset.lo) * TL_PX_PER_MIN) + 'px';
+  tlDropEl.style.height = (lenMin * TL_PX_PER_MIN) + 'px';
+  tlDropEl.textContent = label;
   if (tlDropEl.parentNode !== col) col.appendChild(tlDropEl);
+}
+function showTaskDrop(col, m) {          /* タスクを置く時刻の影。校時の開始に吸い付いたときは校時名を出す */
+  var pp = periodAtMin(m);
+  showTlDropAt(col, m, pp ? PERIOD_LEN : 30, pp ? pp + '校時 ' + minToHm(m) : minToHm(m));
 }
 function hideTlDrop() { if (tlDropEl && tlDropEl.parentNode) tlDropEl.parentNode.removeChild(tlDropEl); }
 $('#grid').addEventListener('click', function (e) {
@@ -5853,7 +5965,8 @@ $('#grid').addEventListener('click', function (e) {
   if (col) {
     if (e.target.closest('.tl-ev')) return;
     pickerLane = col.dataset.lane || null;
-    openTaskPicker(col.dataset.day, nearestPeriod(tlMinAt(col, e.clientY)), e.clientX, e.clientY);
+    var cm = snapTaskMin(tlMinAt(col, e.clientY));
+    openTaskPicker(col.dataset.day, nearestPeriod(cm), e.clientX, e.clientY, cm);
     return;
   }
   pickerLane = null;
@@ -5875,6 +5988,9 @@ $('#grid').addEventListener('pointerdown', function (e) {
   if (!isTouch) e.preventDefault();
 
   var sx = e.clientX, sy = e.clientY, moved = false, target = null;
+  var r0 = card.getBoundingClientRect(), grabOffX = e.clientX - r0.left, grabOffY = e.clientY - r0.top, lastTx = 0, lastTy = 0;
+  var lastEv = { clientX: e.clientX, clientY: e.clientY };
+  var auto = dragAutoScroll(function () { onMove(lastEv); });
   /* タッチ（iPad 等）は 350ms 長押しでドラッグ開始。それまでに動いたら通常のスクロールに譲る */
   var armed = !isTouch, holdTimer = null;
   if (isTouch) holdTimer = setTimeout(function () { armed = true; try { card.setPointerCapture(e.pointerId); } catch (err) {} }, 350);
@@ -5887,19 +6003,31 @@ $('#grid').addEventListener('pointerdown', function (e) {
     }
     if (!moved && Math.hypot(dx, dy) < 5) return;   /* 5px までは誤ドラッグ扱い */
     if (!moved) { moved = true; card.classList.add('drag-card'); }
-    card.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    lastEv = { clientX: ev.clientX, clientY: ev.clientY };
+    auto.move(ev.clientY);
+    var rc0 = card.getBoundingClientRect();         /* スクロールで元の位置がずれても指に付いてくるよう実測で合わせる */
+    lastTx = ev.clientX - grabOffX - (rc0.left - lastTx);
+    lastTy = ev.clientY - grabOffY - (rc0.top - lastTy);
+    card.style.transform = 'translate(' + lastTx + 'px,' + lastTy + 'px)';
     var below = document.elementFromPoint(ev.clientX, ev.clientY);
     var cell = below && below.closest ? below.closest('.slot, .cellbox, .tl-col') : null;
     if (target && target !== cell) target.classList.remove('drop-hint');
     target = (cell && (cell.dataset.di != null || cell.dataset.day)) ? cell : null;
     if (target && target.classList.contains('tl-col')) {
       /* 時間帯の表: 指の位置に近い校時を行き先にして、その枠を影で見せる */
-      target.dataset.p = nearestPeriod(tlMinAt(target, ev.clientY));
-      showTlDrop(target, +target.dataset.p);
+      if (isTask) {
+        target.dataset.m = snapTaskMin(tlMinAt(target, ev.clientY));
+        target.dataset.p = nearestPeriod(+target.dataset.m);
+        showTaskDrop(target, +target.dataset.m);
+      } else {
+        target.dataset.p = nearestPeriod(tlMinAt(target, ev.clientY));
+        showTlDrop(target, +target.dataset.p);
+      }
     } else hideTlDrop();
     if (target) target.classList.add('drop-hint');
   }
   function cleanup() {
+    auto.stop();
     clearTimeout(holdTimer);
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
@@ -5921,7 +6049,9 @@ $('#grid').addEventListener('pointerdown', function (e) {
       if (isTask) {
         var dl = target.dataset.lane;
         var laneChange = (dl === 'ai' && t.assignee !== 'AI') || (dl === 'me' && t.assignee === 'AI');
-        if (!(t.date === day && t.period === p) || laneChange) { assignTaskToSlot(t, day, p, dl); return; }
+        var dm = target.dataset.m != null && target.classList.contains('tl-col') ? +target.dataset.m : null;
+        var same = t.date === day && (dm != null ? taskMin(t) === dm : t.period === p);
+        if (!same || laneChange) { assignTaskToSlot(t, day, p, dl, dm); return; }
       } else {
         var from = +card.dataset.runFrom, to = +card.dataset.runTo;
         if (!(rec.date === day && from === p)) {

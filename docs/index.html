@@ -4786,11 +4786,14 @@ function renderDayTasks(pane, date) {
   /* 新規作成（2026-09-15）: この日の日付だけ付けて作る（コマには置かない） */
   wrap.appendChild(quickAddForm('タスクを追加（Enter）', function (name) { createNewTask(name, date, null); }));
   var all = DUMMY_TASKS.filter(function (t) { return t.date === date && t.kind !== '🗑ゴミ箱'; });
-  var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち'; });
-  var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち'; });
+  /* Day では、Focus / Autopilot のコマに置いたタスク（校時あり・未完了）は左の表に出ているので、右の一覧からは隠す。
+     コマから外す(✕)と一覧に戻る。Week・学校全体は全部出す（2026-11-05 本人要望） */
+  var hideOnGrid = function (t) { return state.gridMode === 'day' && t.period && isOpen(t); };
+  var doing = all.filter(function (t) { return isOpen(t) && t.kind !== '☎連絡待ち' && !hideOnGrid(t); });
+  var waiting = all.filter(function (t) { return isOpen(t) && t.kind === '☎連絡待ち' && !hideOnGrid(t); });
   var done = all.filter(function (t) { return !isOpen(t); });
   doing.sort(bySort); waiting.sort(bySort);
-  if (!all.length) wrap.appendChild(el('div', 'empty', 'タスクはありません'));
+  if (!doing.length && !waiting.length && !done.length) wrap.appendChild(el('div', 'empty', all.length ? 'すべてコマに置きました' : 'タスクはありません'));
   var doingList = el('div', 'tasklist');
   doing.forEach(function (t) { doingList.appendChild(taskItem(t, { sortable: true })); });
   if (doing.length) wrap.appendChild(doingList);
@@ -6942,7 +6945,8 @@ function sciSuggest(lesson) {
   }
   for (var i = start; i < P.length; i++) {
     if (linked[sciNorm(P[i].id)]) continue;
-    if (!prev && P[i].status === 'Done') continue;
+    /* 直前の紐づけが無いとき、実施済み(Done)の本時は飛ばす。ただし授業が過去日なら、実施済みの本時こそ紐づけ先なので飛ばさない（2026-11-05） */
+    if (!prev && P[i].status === 'Done' && !(lesson.date && lesson.date < state.science.today)) continue;
     return P[i];
   }
   return null;

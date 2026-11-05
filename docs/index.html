@@ -616,6 +616,8 @@ dcApplyLook();
   .tl-ev.tl-group .grp-n { position: absolute; right: 4px; top: 1px; font-size: 10px; font-weight: 700; line-height: 14px; padding: 0 5px; border-radius: 7px; background: var(--task); color: #fff; pointer-events: none; z-index: 2; }
   .tl-ev.tl-group:hover { height: auto !important; min-height: var(--h); max-height: 340px; z-index: 30; background: var(--card); box-shadow: 0 10px 26px -10px rgba(0,0,0,.45); }
   /* Day のタスクレーン: 1件ずつ全幅で縦に並べ、名前は折り返して全部見せる */
+  .tl-day.mapped .tl-col { background-image: none; }
+  .tl-hl { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in oklch, var(--line) 70%, transparent); pointer-events: none; }
   .tl-ev.tl-flow { left: 0 !important; width: 100% !important; height: auto; overflow: visible; }
   .tl-ev.tl-flow > .taskcard { overflow: visible; flex: 1 1 auto; min-height: 30px; }
   .tl-ev.tl-flow > .taskcard .nm { display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; }
@@ -3398,6 +3400,7 @@ function timelineRange(perDay) {
 function timelineBox(it, lo) {
   var box = el('div', 'tl-ev');
   var len = it.end - it.start;
+  box.dataset.s = it.start; box.dataset.e = it.end;      /* 可変スケール（reflowDayLanes）が位置を取り直すときの元の時刻 */
   box.style.top = ((it.start - lo) * TL_PX_PER_MIN) + 'px';
   box.style.height = Math.max(len * TL_PX_PER_MIN, TL_MIN_H) + 'px';
   var zl = it.zoneL || 0, zw = it.zoneW || 100;      /* Day の左右の帯（layoutDayZones）。Week は全幅 */
@@ -3413,7 +3416,6 @@ function timelineBox(it, lo) {
     card = taskCard(it.task);
     var fbd = card.querySelector('.bd');
     if (fbd) fbd.insertBefore(el('div', 'tm', minToHm(it.start)), fbd.firstChild);
-    box.dataset.nat = String((it.start - lo) * TL_PX_PER_MIN);
     box.appendChild(card);
     return box;
   }
@@ -3445,6 +3447,7 @@ function timelineBox(it, lo) {
 
 /* --- タイムライン本体（PC）。Day は表示日の1列、Week は表示週の月〜金 --- */
 function renderTimeline(view) {
+  tlMapCur = null;
   var g = $('#grid');
   g.textContent = '';
   g.className = 'grid tl tl-' + view;
@@ -3562,6 +3565,7 @@ function renderTimeline(view) {
   axis.style.gridColumn = '1'; axis.style.gridRow = bodyRow; axis.style.height = H + 'px';
   for (var m = lo; m < range[1]; m += 60) {
     var hr = el('span', 'hr', minToHm(m));
+    hr.dataset.m = m;
     hr.style.top = ((m - lo) * TL_PX_PER_MIN) + 'px';
     axis.appendChild(hr);
   }
@@ -3569,6 +3573,7 @@ function renderTimeline(view) {
   PERIOD_MIN.forEach(function (pm, i) {
     var mk = el('span', 'pm', String(i + 1));
     mk.style.top = ((pm - lo) * TL_PX_PER_MIN) + 'px';
+    mk.dataset.m = pm;
     mk.title = (i + 1) + '校時（標準 ' + PERIOD_START[i] + '〜）';
     if (anyToday && nowMin >= pm && nowMin < pm + PERIOD_LEN) mk.classList.add('is-now');
     axis.appendChild(mk);
@@ -3605,6 +3610,7 @@ function renderTimeline(view) {
     if (isTodayCol(cs.day) && nowMin >= lo && nowMin <= range[1]) {
       var nl = el('div', 'tl-now');
       nl.style.top = ((nowMin - lo) * TL_PX_PER_MIN) + 'px';
+      nl.dataset.m = nowMin;
       col.appendChild(nl);
     }
     g.appendChild(col);
@@ -3614,7 +3620,7 @@ function renderTimeline(view) {
     return (splitDays[i] ? SPLIT_COL_FR : 1) + 'fr';
   }).join(' ');
 
-  if (view === 'day') reflowTaskLanes(g, H);
+  if (view === 'day') reflowDayLanes(g, H);
 
   /* 現在地の1行（時刻で判定。短縮日課の日も実際の時刻で「今／次」を出す） */
   var nlp = $('#nowline');
@@ -3636,27 +3642,79 @@ function renderTimeline(view) {
   return days;
 }
 
-/* Day のタスクレーン: 各タスクを本来の時刻の位置に置き、前のタスクと重なるなら直下へずらす。
-   描画後の実測の高さを使うので、名前が長くて折り返しても重ならない。列の高さは一番長いレーンにそろえる */
-function reflowTaskLanes(g, H0) {
-  var maxH = H0;
-  $all('.tl-col.lane-me, .tl-col.lane-ai', g).forEach(function (col) {
-    var cur = 0;
+/* Day の時間軸は「タスクが多い時間帯だけ縦に伸ばす」可変スケール（2026-11-05 本人要望）。
+   タスクのカードは1件ずつ全部見せたいので、その時間帯の高さを、カードを積んだ高さまで広げる。
+   時刻の目盛り・授業の枠・現在線・ドロップの影も同じ変換（tlMapCur）で動かすので、左右の時刻がずれない。
+   カードの高さは描画後に実測する（名前が折り返す分）。Week は従来の一定スケール */
+var tlMapCur = null;               /* { lo, tops[], hs[] } 時間（時）ごとの上端と高さ(px)。Day だけ */
+var TL_GAP = 4;
+function tlMapY(M, m) {
+  var n = M.hs.length;
+  var hi = Math.min(n - 1, Math.max(0, Math.floor((m - M.lo) / 60)));
+  return M.tops[hi] + (m - M.lo - hi * 60) / 60 * M.hs[hi];
+}
+function tlMapMin(M, y) {
+  var n = M.hs.length, hi = 0;
+  for (var i = 0; i < n; i++) if (M.tops[i] <= y) hi = i;
+  return M.lo + hi * 60 + (y - M.tops[hi]) / M.hs[hi] * 60;
+}
+function reflowDayLanes(g, H0) {
+  var cols = $all('.tl-col', g);
+  if (!cols.length) return;
+  var lo = +cols[0].dataset.lo, base = 60 * TL_PX_PER_MIN, n = Math.max(1, Math.round(H0 / base));
+  var hs = [], tops = [], i;
+  for (i = 0; i < n; i++) hs[i] = base;
+  var lanes = [];
+  $all('.tl-col.lane-me, .tl-col.lane-ai', g).forEach(function (col) {      /* 時間ごとにカードの高さを実測して、その時間の高さを決める */
+    var byH = {};
     $all('.tl-ev.tl-flow', col).forEach(function (box) {
-      var top = Math.max(+box.dataset.nat, cur);
-      box.style.top = top + 'px';
-      cur = top + box.offsetHeight + 4;
+      var st = +box.dataset.s, hi = Math.min(n - 1, Math.max(0, Math.floor((st - lo) / 60)));
+      (byH[hi] = byH[hi] || []).push({ box: box, h: box.offsetHeight, frac: (st - lo - hi * 60) / 60 });
     });
-    maxH = Math.max(maxH, cur);
+    Object.keys(byH).forEach(function (k) {
+      var sum = 0;
+      byH[k].forEach(function (x) { sum += x.h + TL_GAP; });
+      hs[k] = Math.max(hs[k], sum);
+    });
+    lanes.push(byH);
   });
-  if (maxH > H0) {
-    $all('.tl-col, .tl-axis', g).forEach(function (n) { n.style.height = maxH + 'px'; });
-  }
+  var acc = 0;
+  for (i = 0; i < n; i++) { tops[i] = acc; acc += hs[i]; }
+  var M = tlMapCur = { lo: lo, tops: tops, hs: hs };
+  lanes.forEach(function (byH) {                                            /* カードは自分の時刻に置き、重なる分は下へ。時間の枠からはみ出さない */
+    Object.keys(byH).forEach(function (k) {
+      var arr = byH[k], Hh = hs[k], cur = 0, restSum = 0;
+      arr.forEach(function (x) { restSum += x.h + TL_GAP; });
+      arr.forEach(function (x) {
+        var top = Math.min(Math.max(x.frac * Hh, cur), Hh - restSum);
+        x.box.style.top = (tops[k] + top) + 'px';
+        cur = top + x.h + TL_GAP;
+        restSum -= x.h + TL_GAP;
+      });
+    });
+  });
+  $all('.tl-ev:not(.tl-flow)', g).forEach(function (box) {                  /* 授業・行事の枠も同じ目盛りで */
+    var st = +box.dataset.s, en = +box.dataset.e;
+    box.style.top = tlMapY(M, st) + 'px';
+    box.style.height = Math.max(tlMapY(M, en) - tlMapY(M, st), TL_MIN_H) + 'px';
+  });
+  $all('.tl-axis .hr, .tl-axis .pm, .tl-now', g).forEach(function (n2) { n2.style.top = tlMapY(M, +n2.dataset.m) + 'px'; });
+  cols.forEach(function (col) {                                             /* 1時間ごとの罫線 */
+    for (var k = 0; k < n; k++) {
+      var hl = el('div', 'tl-hl');
+      hl.style.top = tops[k] + 'px';
+      col.insertBefore(hl, col.firstChild);
+    }
+  });
+  g.classList.add('mapped');
+  $all('.tl-col, .tl-axis', g).forEach(function (c) { c.style.height = acc + 'px'; });
 }
 
 /* タイムラインの列の中の y 座標 → 分 */
 function tlMinAt(col, clientY) {
-  return +col.dataset.lo + (clientY - col.getBoundingClientRect().top) / TL_PX_PER_MIN;
+  var y = clientY - col.getBoundingClientRect().top;
+  if (tlMapCur && tlMapCur.lo === +col.dataset.lo) return tlMapMin(tlMapCur, y);   /* Day は伸縮した目盛りで逆算 */
+  return +col.dataset.lo + y / TL_PX_PER_MIN;
 }
 
 /* 表のエリアの入口。state.gridMode が 'day' | 'week'（'school' は別の要素に描くのでここでは Week を描いておく） */
@@ -5939,8 +5997,13 @@ var tlDropEl = null;
 function showTlDrop(col, p) { showTlDropAt(col, PERIOD_MIN[p - 1], PERIOD_LEN, p + '校時'); }
 function showTlDropAt(col, startMin, lenMin, label) {
   if (!tlDropEl) tlDropEl = el('div', 'tl-drop');
-  tlDropEl.style.top = ((startMin - col.dataset.lo) * TL_PX_PER_MIN) + 'px';
-  tlDropEl.style.height = (lenMin * TL_PX_PER_MIN) + 'px';
+  if (tlMapCur && tlMapCur.lo === +col.dataset.lo) {
+    tlDropEl.style.top = tlMapY(tlMapCur, startMin) + 'px';
+    tlDropEl.style.height = Math.max(tlMapY(tlMapCur, startMin + lenMin) - tlMapY(tlMapCur, startMin), 18) + 'px';
+  } else {
+    tlDropEl.style.top = ((startMin - col.dataset.lo) * TL_PX_PER_MIN) + 'px';
+    tlDropEl.style.height = (lenMin * TL_PX_PER_MIN) + 'px';
+  }
   tlDropEl.textContent = label;
   if (tlDropEl.parentNode !== col) col.appendChild(tlDropEl);
 }
@@ -7457,6 +7520,12 @@ function loadWeek(weekStart) {
   Store.flush(fetchWeek);                      /* 書き込み中なら終わるのを待ってから読む */
 }
 var lastLoadAt = 0;
+/* 画面幅が変わるとカードの折り返しが変わり、時間の高さがずれるので Day は描き直す */
+var resizeTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () { if (state.mode === 'week' && state.gridMode === 'day' && state.week) renderGrid(); }, 250);
+});
 
 /* Worker が古い（time を返さない）と、7:00 など標準の校時以外に置いたタスクが再読込で消える。
    気づけるよう、週データにタスクがあるのに time の項目が無ければ警告する（1回だけ） */

@@ -2588,7 +2588,7 @@ var Store = {
   /* タスクの書き戻し。patch に含めてよいキー: status / date / kind / spentMin / order。
      楽観更新（ローカルは書き換え済み）。書き込みは enqueueWrite で直列化し、
      失敗したら知らせて Notion の状態を取り直す（画面と Notion のずれを残さない） */
-  updateTask: function (id, patch) { enqueueWrite('updateTask', [id, patch]); },
+  updateTask: function (id, patch, done) { enqueueWrite('updateTask', [id, patch], done); },
   updateTasks: function (items) { enqueueWrite('updateTasks', [items]); },
   updateOrders: function (pairs) { enqueueWrite('updateOrders', [pairs]); },
   /* タスクの新規作成（2026-09-15）。Notion のページ ID が要るので、done に作成済みタスクが返る */
@@ -2805,6 +2805,7 @@ function onSaveFail(err) {
 /* 書き込みキュー: google.script.run は呼び出しごとに独立実行で順序保証が無いので、
    1本の Promise チェーンで直列化する。失敗時は onSaveFail → 週を取り直して画面を Notion に合わせる */
 var writeQueue = Promise.resolve();
+var writeEpoch = 0;        /* 書き込みを積むたびに増やす。読み込み中に書き込みがあったか（古い応答で上書きしないため）の目印 */
 function gasRun(fn, args) {
   return new Promise(function (resolve, reject) {
     var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
@@ -2812,6 +2813,7 @@ function gasRun(fn, args) {
   });
 }
 function enqueueWrite(fn, args, done) {
+  writeEpoch++;
   writeQueue = writeQueue
     .then(function () { return IS_GAS ? gasRun(fn, args) : null; })
     .then(function (res) { if (done) done(res); },
@@ -5751,7 +5753,8 @@ function assignTaskToSlot(t, day, p, lane, min) {
   else if ((lane || pickerLane) === 'me' && t.assignee === 'AI') patch = '自分';
   if (patch) t.assignee = patch;
   syncWeekTask(t);
-  Store.updateTask(t.id, patch ? { date: taskDateValue(t), assignee: patch } : { date: taskDateValue(t) });
+  Store.updateTask(t.id, patch ? { date: taskDateValue(t), assignee: patch } : { date: taskDateValue(t) },
+                   verifyPlacement(t, { date: day, time: t.time }));
   closeTaskPicker();
   withTransition(refresh);
   showToast('「' + t.name + '」を' + mdw(day) + ' ' + taskPlaceLabel(t) + 'に置きました', function () { restoreTask(t, snap); });
@@ -7421,9 +7424,12 @@ function loadWeek(weekStart) {
   /* ★週送りで表示日は動かさない（2026-09-18）。初回だけ今日に置く */
   if (!state.selectedDate) state.selectedDate = initialViewDate();
   refresh();
-  Store.flush(function () {                    /* 書き込み中なら終わるのを待ってから読む */
+  var fetchWeek = function () {
+  var ep = writeEpoch;                         /* 読み込み中に書き込みが入ったら、この応答は古いので捨てて読み直す */
   Store.getWeek(weekStart, function (payload) {
     if (payload.weekStart !== state.weekStart) return;   /* 連打で古い応答が来たら捨てる */
+    if (ep !== writeEpoch) { Store.flush(fetchWeek); return; }
+    checkWorkerVersion(payload);
     state.week = payload;
     /* GAS では週 payload に全タスク（未完了全部＋この週の完了分）が同梱される。
        ダミーの器をそのまま実データに差し替える（タスクタブ・今日のタスク欄の元） */
@@ -7447,9 +7453,38 @@ function loadWeek(weekStart) {
     if (!state.selectedDate) state.selectedDate = initialViewDate();   /* 失敗しても表示日は動かさない */
     refresh();
   });
-  });
+  };
+  Store.flush(fetchWeek);                      /* 書き込み中なら終わるのを待ってから読む */
 }
 var lastLoadAt = 0;
+
+/* Worker が古い（time を返さない）と、7:00 など標準の校時以外に置いたタスクが再読込で消える。
+   気づけるよう、週データにタスクがあるのに time の項目が無ければ警告する（1回だけ） */
+var workerWarned = false;
+function warnOldWorker() {
+  if (workerWarned) return;
+  workerWarned = true;
+  alert('サーバー（Worker）が古いままです。時刻で置いたタスクが、再読込すると消えて見えます。\n' +
+        'web/worker で「wrangler deploy」を実行してください（Notion のデータは壊れていません）。');
+}
+function checkWorkerVersion(payload) {
+  if (!IS_GAS) return;
+  var a = payload && payload.allTasks;
+  if (a && a.length && !('time' in a[0])) warnOldWorker();
+}
+/* タスクの置き場所を書いたあと、Notion が実際に持っている値と照合する。違えば画面を Notion に合わせて知らせる */
+function verifyPlacement(t, exp) {
+  return function (res) {
+    if (!IS_GAS) return;
+    var got = res && res.task;
+    if (!got) { warnOldWorker(); return; }
+    var okTime = (got.time || null) === (exp.time || null);
+    if (got.date !== exp.date || !okTime) {
+      showToast('「' + t.name + '」の保存結果が Notion と違います（' + (got.date || '日付なし') + ' ' + (got.time || '時刻なし') + '）。画面を読み直します');
+      reloadWeek();
+    }
+  };
+}
 
 /* 画面に戻ってきたら取り直す（ホーム画面追加のスマホには更新ボタンが無い） */
 document.addEventListener('visibilitychange', function () {

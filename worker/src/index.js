@@ -1029,8 +1029,9 @@ function createApi(env) {
       }
       if ('order' in patch)    props['並び順']       = { number: patch.order == null ? null : Number(patch.order) };
       if (!Object.keys(props).length) return { ok: true };
-      await patchPage_(taskId, { properties: props }, 'Notion への保存に失敗しました');
-      return { ok: true };
+      const r = await patchPage_(taskId, { properties: props }, 'Notion への保存に失敗しました');
+      /* 保存後の実際の値を返す（画面が書いた内容と照合して、食い違いを見つけるため。2026-11-05） */
+      return { ok: true, task: r && r.json ? mapTask_(r.json) : null };
     },
 
     async updateOrders(pairs) {

@@ -32,7 +32,9 @@ const NOTION_DS = {
   docs:    { ds: '0068f743-83db-4ad5-8053-03471d41f74d', db: 'b7ce3056-a78e-4fe1-a86e-47f0dcb44580' }, /* 書類DB */
   links:   { ds: 'e119857b-6daf-42e5-b9b9-4fb48cf37544', db: 'de46b30d-ba46-422b-b78e-fb1aa27a6623' }, /* クイックリンク */
   schoolwide: { ds: 'f1ce0ada-3655-40ea-94df-6a3ef1c769bb', db: 'ea362d48-3d91-43b4-a4c4-ea19d70cd592' }, /* 校内コマDB */
-  sciunit: { ds: 'ec95f0af-f9db-4c18-a16d-fa278b567ed5', db: '5bc1c070-bf59-4e8a-8526-522e9372df8d' }  /* R8 理科単元計画 */
+  sciunit: { ds: 'ec95f0af-f9db-4c18-a16d-fa278b567ed5', db: '5bc1c070-bf59-4e8a-8526-522e9372df8d' }, /* R8 理科単元計画 */
+  yobina:  { ds: 'd41d5cf4-bd63-4d90-8cc2-7a982cf706b9', db: '81541b29-c33f-4fe5-bc91-9bd9a2fc9e77' }, /* 呼び名確認DB（Check タブ。2026-11-11） */
+  teian:   { ds: '43fe4566-4273-46d3-87fa-2224c98ba715', db: 'fec103c7-665d-4f93-9fbc-cc2223331c74' }  /* 提案DB（Check タブ。2026-11-11） */
 };
 
 /* 標準時刻。実施予定日の時刻がこの6値に一致したときだけ「校時割り当て」とみなす */
@@ -68,7 +70,8 @@ const PUBLIC_FNS = [
   'updateLesson', 'createLesson', 'deleteLesson',
   'getDocs', 'searchDocs', 'updateDoc',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
-  'updateJournalDay'
+  'updateJournalDay',
+  'getChecks', 'checkAck', 'checkTrash', 'checkUndoSupplement', 'checkAnswerYobina', 'checkAnswerTeian', 'checkAccess'
 ];
 
 /* ==========================================================================
@@ -476,7 +479,7 @@ function createApi(env) {
 
   async function queryOnce_(dbKey, body) {
     const d = NOTION_DS[dbKey];
-    const label = { nagi: 'ナギレンダー', task: 'DB_TASK', journal: 'Daily Journaling all', project: 'DB_PROJECT', docs: '書類DB', links: 'クイックリンク', schoolwide: '校内コマDB', sciunit: 'R8 理科単元計画' }[dbKey] || dbKey;
+    const label = { nagi: 'ナギレンダー', task: 'DB_TASK', journal: 'Daily Journaling all', project: 'DB_PROJECT', docs: '書類DB', links: 'クイックリンク', schoolwide: '校内コマDB', sciunit: 'R8 理科単元計画', yobina: '呼び名確認DB', teian: '提案DB' }[dbKey] || dbKey;
     const hint = '（404 なら Notion 側でこの DB にインテグレーションを接続し忘れている可能性が高い）';
     if (apiMode !== 'db') {
       const r = await request_('https://api.notion.com/v1/data_sources/' + d.ds + '/query', 'post', body, '2025-09-03');
@@ -1059,6 +1062,169 @@ function createApi(env) {
                                { parent: { database_id: NOTION_DS.task.db }, properties: props }, '2022-06-28');
       if (!r.ok) throw new Error('タスクの作成に失敗しました (' + r.code + '): ' + String(r.text).slice(0, 300));
       return mapTask_(r.json || {});
+    },
+
+    /* ======================================================================
+       Check タブ（AIからの確認。2026-11-11）
+       書くのは: AI追加（チェック外し）／ページのゴミ箱／補足の行の削除／
+                 呼び名確認DBの 正しい表記・処理済み／提案DBの 承認・却下・内容への追記 だけ
+       ====================================================================== */
+    async checkAccess() {
+      const out = {};
+      for (const k of Object.keys(NOTION_DS)) {
+        try { await queryOnce_(k, { page_size: 1 }); out[k] = 'ok'; }
+        catch (e) { out[k] = String(e.message || e).slice(0, 160); }
+      }
+      return out;
+    },
+
+    async getChecks() {
+      const aiFilter = { property: 'AI追加', checkbox: { equals: true } };
+      const sortNew = [{ timestamp: 'created_time', direction: 'descending' }];
+      const [tasks, events, yob, tei] = await Promise.all([
+        queryAll_('task', { filter: aiFilter, sorts: sortNew }, 100),
+        queryAll_('nagi', { filter: aiFilter, sorts: sortNew }, 100),
+        queryAll_('yobina', { filter: { property: '処理済み', checkbox: { equals: false } }, sorts: sortNew }, 100),
+        queryAll_('teian',  { filter: { property: '処理済み', checkbox: { equals: false } }, sorts: sortNew }, 100)
+      ]);
+
+      /* 本文から「出典」「録音より」の行を拾う（並列。1ページ100ブロックまで） */
+      async function bodyOf(pg) {
+        let blocks = [];
+        try { blocks = await listChildren_(pg.id); } catch (e) { return { lines: [], pairs: [] }; }
+        const items = blocks.map(b => {
+          const d = b[b.type] || {};
+          return { id: b.id, created: b.created_time, text: plain_(d.rich_text || []).trim() };
+        }).filter(x => x.text);
+        const lines = [];
+        const pairs = [];
+        let src = -1;
+        items.forEach((x, i) => {
+          if (/^出典[:：]/.test(x.text)) { src = i; lines.push(x.text); return; }
+          if (/^（録音より/.test(x.text)) {
+            const prev = items[i - 1];
+            const ids = [x.id];
+            let srcText = null;
+            if (prev && /^出典[:：]/.test(prev.text)) { ids.unshift(prev.id); srcText = prev.text; }
+            pairs.push({ ids, created: x.created, source: srcText, text: x.text });
+            lines.push(x.text);
+            return;
+          }
+          if (src >= 0 && lines.length < 12) lines.push(x.text);
+        });
+        return { lines: lines.slice(0, 12), pairs };
+      }
+      function kubunOf(pg) {
+        const v = propSelect_((pg.properties || {})['AI区分']);
+        if (v === '新規' || v === '補足') return { kubun: v, guessed: false };
+        /* AI区分が無い古いページ: 作成から2時間以内に最終更新があれば新規とみなす（推測） */
+        const c = Date.parse(pg.created_time), e = Date.parse(pg.last_edited_time);
+        return { kubun: (e - c) < 2 * 3600000 ? '新規' : '補足', guessed: true };
+      }
+      const aiPages = tasks.map(p => ['task', p]).concat(events.map(p => ['nagi', p]));
+      const bodies = await Promise.all(aiPages.map(([, p]) => bodyOf(p)));
+
+      const ai = aiPages.map(([k, pg], i) => {
+        const p = pg.properties || {};
+        const kb = kubunOf(pg);
+        const base = { id: pg.id, db: k, url: pg.url, created: pg.created_time, edited: pg.last_edited_time,
+                       kubun: kb.kubun, guessed: kb.guessed, lines: bodies[i].lines, pairs: bodies[i].pairs };
+        if (k === 'task') {
+          const d = toJst_(propDateRaw_(p['実施予定日'])), dl = toJst_(propDateRaw_(p['期限']));
+          return Object.assign(base, { name: propTitle_(p['名前']), status: propStatus_(p['status']),
+            date: d ? d.date : null, deadline: dl ? dl.date : null });
+        }
+        const d = toJst_(propDateRaw_(p['日付']));
+        return Object.assign(base, { name: propTitle_(p['Name']), date: d ? d.date : null, time: d ? d.time : null,
+          shubetsu: propSelect_(p['種別']), periods: propMulti_(p['時限']), summary: propText_(p['概要']) });
+      });
+
+      const yobina = yob.map(pg => {
+        const p = pg.properties || {};
+        return { id: pg.id, url: pg.url, word: propTitle_(p['聞こえた語']), context: propText_(p['文脈']),
+                 candidates: propText_(p['候補']), answer: propText_(p['正しい表記']),
+                 sources: propRelation_(p['出典']), date: (propDateRaw_(p['提案日']) || '').slice(0, 10) };
+      });
+      const teian = tei.map(pg => {
+        const p = pg.properties || {};
+        return { id: pg.id, url: pg.url, title: propTitle_(p['提案']), kind: propSelect_(p['種別']),
+                 body: propText_(p['内容']), sources: propRelation_(p['出典']),
+                 date: (propDateRaw_(p['提案日']) || '').slice(0, 10),
+                 approved: propCheckbox_(p['承認']), rejected: propCheckbox_(p['却下']) };
+      });
+      return { ai, yobina, teian, at: Date.now() };
+    },
+
+    /* OK: AI追加 のチェックを外す（内容はそのまま）。items = [{db:'task'|'nagi', id}] */
+    async checkAck(items) {
+      items = (items || []).slice(0, 100);
+      for (const it of items) {
+        if (it.db !== 'task' && it.db !== 'nagi') throw new Error('対象外のDBです: ' + it.db);
+        await fetchPageOf_(it.id, it.db, it.db === 'task' ? 'DB_TASK のページ' : 'ナギレンダーのページ');
+        await patchPage_(it.id, { properties: { 'AI追加': { checkbox: false } } }, 'OK の保存に失敗しました');
+      }
+      return { ok: true, n: items.length };
+    },
+
+    /* 削除: ページをゴミ箱へ（Notion で30日間は戻せる） */
+    async checkTrash(db, id) {
+      if (db !== 'task' && db !== 'nagi') throw new Error('対象外のDBです: ' + db);
+      await fetchPageOf_(id, db, db === 'task' ? 'DB_TASK のページ' : 'ナギレンダーのページ');
+      await patchPage_(id, { archived: true }, '削除に失敗しました');
+      return { ok: true };
+    },
+
+    /* 補足を取り消す: 指定の「出典＋録音より」ブロックを消して、AI追加を外す。
+       消すのは本文が「出典:」「（録音より」で始まるブロックだけ（ほかの行は渡されても消さない） */
+    async checkUndoSupplement(db, id, blockIds) {
+      if (db !== 'task' && db !== 'nagi') throw new Error('対象外のDBです: ' + db);
+      await fetchPageOf_(id, db, db === 'task' ? 'DB_TASK のページ' : 'ナギレンダーのページ');
+      const blocks = await listChildren_(id);
+      const want = new Set((blockIds || []).map(String));
+      let n = 0;
+      for (const b of blocks) {
+        if (!want.has(b.id)) continue;
+        const t = plain_((b[b.type] || {}).rich_text || []).trim();
+        if (!/^出典[:：]/.test(t) && !/^（録音より/.test(t)) continue;
+        const r = await request_('https://api.notion.com/v1/blocks/' + b.id, 'delete', null, '2022-06-28');
+        if (!r.ok) throw new Error('補足の行の削除に失敗しました (' + r.code + ')');
+        n++;
+      }
+      await patchPage_(id, { properties: { 'AI追加': { checkbox: false } } }, 'チェックを外せませんでした');
+      return { ok: true, removed: n };
+    },
+
+    /* 呼び名: answer を 正しい表記 へ。skip=true なら空のまま 処理済み */
+    async checkAnswerYobina(id, answer, skip) {
+      await fetchPageOf_(id, 'yobina', '呼び名確認DBのページ');
+      const props = skip
+        ? { '正しい表記': { rich_text: [] }, '処理済み': { checkbox: true } }
+        : { '正しい表記': { rich_text: [{ text: { content: String(answer || '').slice(0, 200) } }] } };
+      await patchPage_(id, { properties: props }, '呼び名の保存に失敗しました');
+      return { ok: true };
+    },
+
+    /* 提案: action = 'approve' | 'reject' | 'answer' | 'clear'。answer は「内容」の末尾に追記して承認 */
+    async checkAnswerTeian(id, action, answer) {
+      const pg = await fetchPageOf_(id, 'teian', '提案DBのページ');
+      const props = {};
+      if (action === 'approve') { props['承認'] = { checkbox: true };  props['却下'] = { checkbox: false }; }
+      else if (action === 'reject') { props['承認'] = { checkbox: false }; props['却下'] = { checkbox: true }; }
+      else if (action === 'clear') { props['承認'] = { checkbox: false }; props['却下'] = { checkbox: false }; }
+      else if (action === 'answer') {
+        const a = String(answer || '').trim();
+        if (!a) throw new Error('回答が空です');
+        const cur = plain_((pg.properties['内容'] && pg.properties['内容'].rich_text) || []);
+        const jst = new Date(Date.now() + 9 * 3600000);
+        const add = (cur ? '\n' : '') + '【柳楽の回答 ' + (jst.getUTCMonth() + 1) + '/' + jst.getUTCDate() + '】' + a;
+        const full = (cur + add);
+        const chunks = [];
+        for (let i = 0; i < full.length && chunks.length < 50; i += 1900) chunks.push({ type: 'text', text: { content: full.slice(i, i + 1900) } });
+        props['内容'] = { rich_text: chunks };
+        props['承認'] = { checkbox: true }; props['却下'] = { checkbox: false };
+      } else throw new Error('不明な操作です: ' + action);
+      await patchPage_(id, { properties: props }, '提案の保存に失敗しました');
+      return { ok: true };
     },
 
     async deleteTask(taskId) {

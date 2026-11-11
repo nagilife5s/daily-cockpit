@@ -6,6 +6,9 @@
 <title>Daily-Cockpit</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cockpit">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
@@ -326,7 +329,8 @@ dcApplyLook();
   #shell[data-mode="science"] #tab-science,
   #shell[data-mode="month"]   #tab-month,
   #shell[data-mode="project"] #tab-project,
-  #shell[data-mode="often"]   #tab-often { display: block; }
+  #shell[data-mode="often"]   #tab-often,
+  #shell[data-mode="check"]   #tab-check { display: block; }
 
   section + section { margin-top: 18px; }
   /* 週タブの2カラム枠は section ではないので、前後の余白を明示する（日直帯との間が詰まる問題） */
@@ -1886,6 +1890,69 @@ dcApplyLook();
   [data-theme="block"] .jr-fx.fx-block i:nth-of-type(3n+1) { background: #B27CFF; }
 }
 </style>
+<style>
+/* Check タブ（AIからの確認。2026-11-11） */
+@layer components {
+  .tabbar button { position: relative; }
+  .tbadge {
+    position: absolute; top: 3px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 999px; background: var(--c-leave); color: #fff; font-size: 10px; font-weight: 700;
+    line-height: 16px; text-align: center;
+  }
+  .check-banner {
+    display: flex; align-items: center; gap: 6px; width: 100%; margin: 0 0 10px; padding: 9px 14px;
+    border: 1px solid color-mix(in oklch, var(--c-leave) 35%, var(--line)); border-radius: var(--radius);
+    background: color-mix(in oklch, var(--c-leave) 8%, var(--card)); color: var(--ink); font-size: var(--fs-sm);
+    font-weight: 600; text-align: left; cursor: pointer;
+  }
+  .check-banner[hidden] { display: none; }
+  .check-banner b { color: var(--c-leave); font-size: 1.1em; }
+  .check-banner span { margin-left: auto; color: var(--ink-3); }
+  #check-root { max-width: 760px; margin: 0 auto; }
+  .ck-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+  .ck-h { font-size: var(--fs-md, 17px); font-weight: 700; color: var(--ink); }
+  .ck-total { background: var(--c-leave); color: #fff; border-radius: 999px; padding: 1px 10px; font-weight: 700; font-size: var(--fs-sm); }
+  .ck-total.zero { background: var(--line); color: var(--ink-3); }
+  .ck-head .ck-btn { margin-left: auto; }
+  .ck-done { text-align: center; padding: 18px 0 8px; color: var(--ink-3); font-size: var(--fs-sm); }
+  .ck-sec { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow); overflow: hidden; }
+  .ck-sec.empty { opacity: .6; box-shadow: none; }
+  .ck-sh { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 11px 14px; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); text-align: left; cursor: pointer; }
+  .ck-sec.empty .ck-sh { cursor: default; }
+  .ck-n { background: color-mix(in oklch, var(--c-events) 14%, var(--card)); color: var(--c-events); border-radius: 999px; padding: 0 8px; font-size: var(--fs-xs); }
+  .ck-x { color: var(--ink-3); font-weight: 500; font-size: var(--fs-xs); }
+  .ck-car { margin-left: auto; color: var(--ink-3); }
+  .ck-body { padding: 0 12px 12px; }
+  .ck-seg { display: flex; gap: 6px; margin-bottom: 8px; }
+  .ck-seg button { flex: 1; border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); border-radius: 999px; padding: 6px 0; font-size: var(--fs-xs); font-weight: 600; }
+  .ck-seg button[aria-pressed="true"] { background: var(--c-events); border-color: var(--c-events); color: #fff; }
+  .ck-none { color: var(--ink-3); font-size: var(--fs-xs); padding: 8px 2px; }
+  .ck-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-top: 8px; background: var(--paper); }
+  .ck-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .ck-name { font-weight: 700; color: var(--ink); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+  .ck-lab { flex: none; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 1px 6px; }
+  .ck-lab.new { background: color-mix(in oklch, var(--c-events) 16%, var(--card)); color: var(--c-events); }
+  .ck-lab.add { background: color-mix(in oklch, var(--c-trip) 16%, var(--card)); color: var(--c-trip); }
+  .ck-lab.kind { background: color-mix(in oklch, var(--c-roster) 14%, var(--card)); color: var(--c-roster); }
+  .ck-meta { color: var(--ink-3); font-size: var(--fs-xs); margin-top: 3px; }
+  .ck-ctx { color: var(--ink-2); font-size: var(--fs-xs); margin-top: 4px; overflow-wrap: anywhere; }
+  .ck-ctx.pre { white-space: pre-wrap; }
+  .ck-lines { margin: 6px 0 0; padding-left: 16px; color: var(--ink-2); font-size: var(--fs-xs); }
+  .ck-lines li { margin: 2px 0; overflow-wrap: anywhere; }
+  .ck-lines li.src { list-style: none; margin-left: -16px; color: var(--ink-3); }
+  .ck-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .ck-btn { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 5px 13px; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .ck-btn.pri { background: var(--c-events); border-color: var(--c-events); color: #fff; }
+  .ck-btn.warn { color: var(--c-leave); border-color: color-mix(in oklch, var(--c-leave) 40%, var(--line)); }
+  .ck-btn.ghost { background: transparent; }
+  .ck-btn.wide { width: 100%; justify-content: center; padding: 8px 0; }
+  .ck-inp { width: 100%; margin-top: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink); box-sizing: border-box; }
+  .ck-cands { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
+  .ck-cl { color: var(--ink-3); font-size: 10px; }
+  .ck-chip { border: 1px dashed color-mix(in oklch, var(--c-events) 50%, var(--line)); background: var(--card); color: var(--c-events); border-radius: 999px; padding: 3px 10px; font-size: var(--fs-xs); cursor: pointer; }
+  .ck-pend { display: block; margin-top: 10px; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); padding: 4px 2px; cursor: pointer; }
+}
+</style>
 </head>
 <body>
 <div id="app">
@@ -1911,6 +1978,7 @@ dcApplyLook();
     <span class="spacer"></span>
     <nav class="tabbar" role="tablist" id="tabs">
       <button role="tab" data-mode="week"    data-icon="week"    aria-selected="true"  aria-controls="tab-week"><span class="tl">Main</span></button>
+      <button role="tab" data-mode="check"   data-icon="bell"    aria-selected="false" aria-controls="tab-check"><span class="tl">Check</span><span class="tbadge" id="check-badge" hidden></span></button>
       <button role="tab" data-mode="today"   data-icon="tick"    aria-selected="false" aria-controls="tab-today"><span class="tl">Setup</span></button>
       <button role="tab" data-mode="science" data-icon="beaker"  aria-selected="false" aria-controls="tab-science"><span class="tl">Science</span></button>
       <button role="tab" data-mode="month"   data-icon="month"   aria-selected="false" aria-controls="tab-month"><span class="tl">Month</span></button>
@@ -1958,6 +2026,7 @@ dcApplyLook();
 
     <!-- ===================== 週タブ ===================== -->
     <div class="tab" id="tab-week">
+      <button type="button" class="check-banner" id="check-banner" hidden>🤖 AIからの確認 <b id="check-banner-n">0</b>件 <span>›</span></button>
 
       <div class="stateband" id="state-err" hidden>
         <span id="state-err-msg">取得に失敗しました。</span>
@@ -2145,6 +2214,10 @@ dcApplyLook();
     </div>
     <div class="tab" id="tab-often">
       <div id="docs-root"></div>
+    </div>
+
+    <div class="tab" id="tab-check">
+      <div id="check-root"></div>
     </div>
 
   </main>
@@ -2565,6 +2638,19 @@ function dayIndexOf(ymd) { var dw = dowOf(ymd); return dw >= 1 && dw <= 5 ? dw -
 /* ==========================================================================
    4. Store — google.script.run はここ以外に書かない
    ========================================================================== */
+var DUMMY_CHECKS = {
+  ai: [
+    { id: 'm1', db: 'task', url: '#', created: '2026-11-11T10:58:45Z', kubun: '新規', guessed: false, name: '校｜封筒の提出物を回収する', status: 'Not Started', date: '2026-11-25', deadline: '2026-11-25',
+      lines: ['出典: 文字起こしログ（2026-11-10）朝の会', '保護者に書いてもらう封筒。11/25締切。'], pairs: [] },
+    { id: 'm2', db: 'task', url: '#', created: '2026-11-08T08:50:00Z', kubun: '補足', guessed: true, name: '進｜面接練習の日程を決める', status: 'Not Started', date: '2026-11-12', deadline: null,
+      lines: [], pairs: [{ ids: ['b1', 'b2'], created: '2026-11-11T09:29:00Z', source: '出典: 文字起こしログ（2026-11-11）09:12', text: '（録音より 11/11 9:12）木曜の放課後で調整したい' }] },
+    { id: 'm3', db: 'nagi', url: '#', created: '2026-11-11T07:29:00Z', kubun: '新規', guessed: false, name: '学年会', date: '2026-11-13', time: '15:40', shubetsu: '学校行事', periods: ['放課後'], summary: '',
+      lines: ['出典: 文字起こしログ（2026-11-11）職員打ち合わせ 8:20'], pairs: [] }
+  ],
+  yobina: [{ id: 'y1', url: '#', word: 'ましま', context: '「ましま先生に封筒を出して」', candidates: '真島、間島', answer: '', sources: [], date: '2026-11-11' }],
+  teian: [{ id: 't1', url: '#', title: '「水圧」を用語集に追加', kind: '用語集', body: '「すいあつ」が「水温」に誤変換される', sources: [], date: '2026-11-11', approved: false, rejected: false },
+          { id: 't2', url: '#', title: '部活の時間の書き方', kind: 'その他', body: '練習試合の会場が決まっていません。分かったら教えてください', sources: [], date: '2026-11-10', approved: false, rejected: false }]
+};
 var Store = {
   getWeek: function (weekStart, done, fail) {
     if (IS_GAS) {
@@ -2704,6 +2790,10 @@ var Store = {
       done({ url: 'https://www.notion.so/' + id, worksheets: ['ワークシート.pdf'],
              kahoot: [{ title: '物質クイズ', url: 'https://example.com' }], recipes: [{ title: '金属の性質', url: null }], artifacts: [] });
     }, 400);
+  },
+  getChecks: function (done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getChecks(); return; }
+    setTimeout(function () { done(DUMMY_CHECKS); }, 400);
   },
   getDocs: function (done, fail) {
     if (IS_GAS) {
@@ -7410,6 +7500,318 @@ function renderScienceTab() {
   });
 }
 
+/* ==========================================================================
+   Check タブ（AIからの確認。2026-11-11）
+   ① AIが登録・補足したタスク・予定（AI追加）② 呼び名確認DB ③ 提案DB
+   件数 = ①＋②＋③（反映待ち＝入力済みでエージェント処理待ちは数えない）
+   ========================================================================== */
+var checks = { data: null, loading: false, error: '', sub: 'task', open: { ai: true, yob: false, tei: false, pend: {} },
+               hidden: {}, drafts: {} };
+function checkPendingYob(y) { return !!(y.answer && y.answer.trim()); }
+function checkPendingTei(t) { return !!(t.approved || t.rejected); }
+function checkLists() {
+  var d = checks.data || { ai: [], yobina: [], teian: [] };
+  var ai = d.ai.filter(function (a) { return !checks.hidden[a.id]; });
+  var yob = d.yobina.filter(function (y) { return !checks.hidden[y.id]; });
+  var tei = d.teian.filter(function (t) { return !checks.hidden[t.id]; });
+  return {
+    ai: ai,
+    yob: yob.filter(function (y) { return !checkPendingYob(y); }),
+    yobPend: yob.filter(checkPendingYob),
+    tei: tei.filter(function (t) { return !checkPendingTei(t); }),
+    teiPend: tei.filter(checkPendingTei)
+  };
+}
+function checkCount() {
+  if (!checks.data) return 0;
+  var L = checkLists();
+  return L.ai.length + L.yob.length + L.tei.length;
+}
+function syncCheckBadge() {
+  var n = checkCount();
+  var b = $('#check-badge');
+  if (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); }
+  var ban = $('#check-banner');
+  if (ban) { ban.hidden = !n; $('#check-banner-n').textContent = String(n); }
+  /* ホーム画面のアイコン（PWA として追加した端末のみ。iOS は通知の許可が要る） */
+  try {
+    if (checks.data && navigator.setAppBadge) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); }
+  } catch (e) {}
+}
+function loadChecks(force) {
+  if (checks.loading) return;
+  if (!force && checks.data && Date.now() - checks.data._at < 60000) { syncCheckBadge(); return; }
+  checks.loading = true;
+  Store.getChecks(function (res) {
+    checks.loading = false; checks.error = '';
+    res = res || { ai: [], yobina: [], teian: [] };
+    res._at = Date.now();
+    checks.data = res; checks.hidden = {};
+    syncCheckBadge();
+    if (state.mode === 'check') withTransition(renderCheckTab);
+  }, function (err) {
+    checks.loading = false;
+    checks.error = (err && err.message) || '取得に失敗しました';
+    if (state.mode === 'check') renderCheckTab();
+  });
+}
+function checkWrite(fn, args, onFail) {
+  if (!IS_GAS) return Promise.resolve(null);
+  return gasRun(fn, args).catch(function (err) {
+    onSaveFail(err);
+    if (onFail) onFail();
+    loadChecks(true);
+  });
+}
+function checkHide(id) { checks.hidden[id] = true; syncCheckBadge(); renderCheckTab(); }
+function checkUnhide(id) { delete checks.hidden[id]; syncCheckBadge(); renderCheckTab(); }
+
+/* ---- 共通の部品 ---- */
+function checkSection(key, icon, title, n, bodyFn, extra, total) {
+  if (total == null) total = n;
+  var sec = el('section', 'ck-sec' + (total ? '' : ' empty'));
+  var h = el('button', 'ck-sh');
+  h.type = 'button';
+  var open = total > 0 && checks.open[key];
+  h.setAttribute('aria-expanded', String(open));
+  h.appendChild(el('span', 'ck-ic', icon));
+  h.appendChild(el('span', 'ck-t', title));
+  h.appendChild(el('span', 'ck-n', String(n)));
+  if (extra) h.appendChild(el('span', 'ck-x', extra));
+  h.appendChild(el('span', 'ck-car', open ? '▾' : '▸'));
+  h.addEventListener('click', function () { checks.open[key] = !checks.open[key]; renderCheckTab(); });
+  sec.appendChild(h);
+  if (open) { var b = el('div', 'ck-body'); bodyFn(b); sec.appendChild(b); }
+  return sec;
+}
+function ckBtn(label, cls, fn) {
+  var b = el('button', 'ck-btn' + (cls ? ' ' + cls : ''), label);
+  b.type = 'button';
+  b.addEventListener('click', function (e) { e.stopPropagation(); fn(b); });
+  return b;
+}
+function ckOpenLink(url) {
+  var a = el('a', 'ck-btn ghost', '開く');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  return a;
+}
+function ckMd(iso) { var j = toJstMs(Date.parse(iso)); return (j.getUTCMonth() + 1) + '/' + j.getUTCDate() + ' ' + j.getUTCHours() + ':' + ('0' + j.getUTCMinutes()).slice(-2); }
+function toJstMs(ms) { return new Date(ms + 9 * 3600000); }
+
+/* 補足として取り消せる行の組: 作成から1時間より後に足され、14日以内のもの */
+function ckUndoPairs(a) {
+  var c = Date.parse(a.created), lim = Date.now() - 14 * 86400000;
+  return (a.pairs || []).filter(function (p) { var t = Date.parse(p.created); return t > c + 3600000 && t > lim; });
+}
+
+/* ---- ① AI が登録・補足したタスク・予定 ---- */
+function ckAiItem(a) {
+  var card = el('div', 'ck-card');
+  var top = el('div', 'ck-top');
+  top.appendChild(el('span', 'ck-lab ' + (a.kubun === '新規' ? 'new' : 'add'),
+    (a.kubun === '新規' ? '🆕 新規' : '➕ 補足') + (a.guessed ? '?' : '')));
+  top.appendChild(el('span', 'ck-name', a.name || '（名前なし）'));
+  card.appendChild(top);
+  var meta = [];
+  if (a.db === 'task') {
+    if (a.status) meta.push(a.status);
+    if (a.date) meta.push('実施 ' + mdw(a.date));
+    if (a.deadline) meta.push('期限 ' + mdw(a.deadline));
+  } else {
+    if (a.date) meta.push(mdw(a.date) + (a.time ? ' ' + a.time : ''));
+    if (a.shubetsu) meta.push(a.shubetsu);
+    if (a.periods && a.periods.length) meta.push(a.periods.join('・'));
+    if (a.summary) meta.push(a.summary);
+  }
+  if (meta.length) card.appendChild(el('div', 'ck-meta', meta.join(' ／ ')));
+  var pairs = a.kubun === '補足' ? ckUndoPairs(a) : [];
+  var lines = a.kubun === '補足' && pairs.length
+    ? [].concat.apply([], pairs.map(function (p) { return p.source ? [p.source, p.text] : [p.text]; }))
+    : (a.lines || []);
+  if (lines.length) {
+    var ul = el('ul', 'ck-lines');
+    lines.forEach(function (t) { ul.appendChild(el('li', /^出典/.test(t) ? 'src' : null, t)); });
+    card.appendChild(ul);
+  }
+  var row = el('div', 'ck-acts');
+  row.appendChild(ckBtn('OK', 'pri', function () {
+    checkHide(a.id);
+    checkWrite('checkAck', [[{ db: a.db, id: a.id }]], function () { checkUnhide(a.id); });
+  }));
+  if (a.kubun === '補足' && pairs.length) {
+    row.appendChild(ckBtn('補足を取り消す', null, function () {
+      if (!confirm('「' + a.name + '」から、AIが足した次の行を消します。\n\n' + lines.join('\n'))) return;
+      var ids = [].concat.apply([], pairs.map(function (p) { return p.ids; }));
+      checkHide(a.id);
+      checkWrite('checkUndoSupplement', [a.db, a.id, ids], function () { checkUnhide(a.id); });
+    }));
+  }
+  row.appendChild(ckBtn('削除', 'warn', function () {
+    checkHide(a.id);
+    var undone = false;
+    var timer = setTimeout(function () { if (!undone) checkWrite('checkTrash', [a.db, a.id], function () { checkUnhide(a.id); }); }, 5000);
+    showToast('「' + a.name + '」を削除しました', function () { undone = true; clearTimeout(timer); checkUnhide(a.id); });
+  }));
+  if (a.url) row.appendChild(ckOpenLink(a.url));
+  card.appendChild(row);
+  return card;
+}
+function ckAiBody(box, list) {
+  var seg = el('div', 'ck-seg');
+  [['task', '✅ タスク'], ['nagi', '📅 予定']].forEach(function (s) {
+    var n = list.filter(function (a) { return a.db === s[0]; }).length;
+    var b = el('button', null, s[1] + ' ' + n);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(checks.sub === s[0]));
+    b.addEventListener('click', function () { checks.sub = s[0]; renderCheckTab(); });
+    seg.appendChild(b);
+  });
+  box.appendChild(seg);
+  var shown = list.filter(function (a) { return a.db === checks.sub; });
+  if (!shown.length) { box.appendChild(el('div', 'ck-none', 'この区分はありません')); return; }
+  var all = ckBtn('まとめてOK（' + shown.length + '件）', 'pri wide', function () {
+    var label = checks.sub === 'task' ? 'タスク' : '予定';
+    if (!confirm(label + ' ' + shown.length + '件を OK にします（AI追加のチェックを外します）')) return;
+    var items = shown.map(function (a) { return { db: a.db, id: a.id }; });
+    items.forEach(function (it) { checks.hidden[it.id] = true; });
+    syncCheckBadge(); renderCheckTab();
+    checkWrite('checkAck', [items], function () { items.forEach(function (it) { delete checks.hidden[it.id]; }); renderCheckTab(); });
+  });
+  box.appendChild(all);
+  shown.forEach(function (a) { box.appendChild(ckAiItem(a)); });
+}
+
+/* ---- ② 呼び名 ---- */
+function ckYobItem(y, pending) {
+  var card = el('div', 'ck-card');
+  card.appendChild(el('div', 'ck-name', y.word || '（語なし）'));
+  if (y.context) card.appendChild(el('div', 'ck-ctx', y.context));
+  var inp = el('input', 'ck-inp');
+  inp.type = 'text'; inp.placeholder = '正しい表記';
+  inp.value = checks.drafts[y.id] != null ? checks.drafts[y.id] : (y.answer || '');
+  inp.addEventListener('input', function () { checks.drafts[y.id] = inp.value; });
+  if (y.candidates) {
+    var cw = el('div', 'ck-cands');
+    cw.appendChild(el('span', 'ck-cl', '候補'));
+    y.candidates.split(/[、,／\/]|\s+(?=\S)/).map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 8).forEach(function (c) {
+      var b = el('button', 'ck-chip', c); b.type = 'button';
+      b.addEventListener('click', function () { inp.value = c; checks.drafts[y.id] = c; inp.focus(); });
+      cw.appendChild(b);
+    });
+    card.appendChild(cw);
+  }
+  card.appendChild(inp);
+  var row = el('div', 'ck-acts');
+  row.appendChild(ckBtn(pending ? '直す' : '保存', 'pri', function () {
+    var v = inp.value.trim();
+    if (!v) { inp.focus(); return; }
+    y.answer = v; delete checks.drafts[y.id];
+    syncCheckBadge(); renderCheckTab();
+    checkWrite('checkAnswerYobina', [y.id, v, false]);
+  }));
+  if (!pending) row.appendChild(ckBtn('分からない（スルー）', null, function () {
+    checkHide(y.id);
+    checkWrite('checkAnswerYobina', [y.id, '', true], function () { checkUnhide(y.id); });
+  }));
+  if (y.sources && y.sources[0]) row.appendChild(ckOpenLink('https://www.notion.so/' + y.sources[0].replace(/-/g, '')));
+  card.appendChild(row);
+  return card;
+}
+
+/* ---- ③ 提案 ---- */
+function ckTeiItem(t, pending) {
+  var card = el('div', 'ck-card');
+  var top = el('div', 'ck-top');
+  if (t.kind) top.appendChild(el('span', 'ck-lab kind', t.kind));
+  top.appendChild(el('span', 'ck-name', t.title || '（提案）'));
+  card.appendChild(top);
+  if (t.date) card.appendChild(el('div', 'ck-meta', '提案 ' + mdw(t.date) + (pending ? ' ／ ' + (t.approved ? '承認済み・反映待ち' : '却下済み・反映待ち') : '')));
+  if (t.body) card.appendChild(el('div', 'ck-ctx pre', t.body));
+  var row = el('div', 'ck-acts');
+  if (pending) {
+    row.appendChild(ckBtn('取り消す', null, function () {
+      t.approved = false; t.rejected = false; syncCheckBadge(); renderCheckTab();
+      checkWrite('checkAnswerTeian', [t.id, 'clear']);
+    }));
+  } else if (t.kind === 'その他') {
+    var ta = el('textarea', 'ck-inp');
+    ta.rows = 2; ta.placeholder = '回答';
+    ta.value = checks.drafts[t.id] || '';
+    ta.addEventListener('input', function () { checks.drafts[t.id] = ta.value; });
+    card.appendChild(ta);
+    row.appendChild(ckBtn('回答する', 'pri', function () {
+      var v = ta.value.trim();
+      if (!v) { ta.focus(); return; }
+      t.approved = true; delete checks.drafts[t.id];
+      syncCheckBadge(); renderCheckTab();
+      checkWrite('checkAnswerTeian', [t.id, 'answer', v], function () { t.approved = false; renderCheckTab(); });
+    }));
+    row.appendChild(ckBtn('却下', 'warn', function () {
+      t.rejected = true; syncCheckBadge(); renderCheckTab();
+      checkWrite('checkAnswerTeian', [t.id, 'reject']);
+    }));
+  } else {
+    row.appendChild(ckBtn('承認', 'pri', function () {
+      t.approved = true; syncCheckBadge(); renderCheckTab();
+      checkWrite('checkAnswerTeian', [t.id, 'approve']);
+    }));
+    row.appendChild(ckBtn('却下', 'warn', function () {
+      t.rejected = true; syncCheckBadge(); renderCheckTab();
+      checkWrite('checkAnswerTeian', [t.id, 'reject']);
+    }));
+  }
+  if (t.url) row.appendChild(ckOpenLink(t.url));
+  card.appendChild(row);
+  return card;
+}
+function ckPending(box, key, list, itemFn) {
+  if (!list.length) return;
+  var open = !!checks.open.pend[key];
+  var b = el('button', 'ck-pend', '反映待ち ' + list.length + '件 ' + (open ? '▾' : '▸'));
+  b.type = 'button';
+  b.addEventListener('click', function () { checks.open.pend[key] = !open; renderCheckTab(); });
+  box.appendChild(b);
+  if (open) list.forEach(function (x) { box.appendChild(itemFn(x, true)); });
+}
+
+function renderCheckTab() {
+  var root = $('#check-root');
+  if (!root) return;
+  root.textContent = '';
+  var head = el('div', 'ck-head');
+  head.appendChild(el('h2', 'ck-h', 'AIからの確認'));
+  var n = checkCount();
+  head.appendChild(el('span', 'ck-total' + (n ? '' : ' zero'), checks.data ? String(n) : '…'));
+  var re = ckBtn('↻', 'ghost', function () { loadChecks(true); renderCheckTab(); });
+  re.title = '読み直す';
+  head.appendChild(re);
+  root.appendChild(head);
+  if (!checks.data) {
+    if (checks.error) {
+      var sb = el('div', 'stateband', '取得に失敗しました。（' + checks.error + '）');
+      var rb = el('button', null, '再読み込み');
+      rb.addEventListener('click', function () { loadChecks(true); renderCheckTab(); });
+      sb.appendChild(rb);
+      root.appendChild(sb);
+    } else {
+      root.appendChild(el('div', 'stateband', '読み込み中…'));
+      loadChecks(true);
+    }
+    return;
+  }
+  var L = checkLists();
+  if (!n && !L.yobPend.length && !L.teiPend.length) root.appendChild(el('div', 'ck-done', '確認することはありません 🎉'));
+  root.appendChild(checkSection('ai', '🤖', 'AIが登録・補足したタスク・予定', L.ai.length, function (b) { ckAiBody(b, L.ai); }));
+  root.appendChild(checkSection('yob', '🏷', '呼び名の確認', L.yob.length, function (b) {
+    L.yob.forEach(function (y) { b.appendChild(ckYobItem(y, false)); });
+    ckPending(b, 'yob', L.yobPend, ckYobItem);
+  }, L.yobPend.length ? '反映待ち ' + L.yobPend.length : null, L.yob.length + L.yobPend.length));
+  root.appendChild(checkSection('tei', '💡', '提案', L.tei.length, function (b) {
+    L.tei.forEach(function (t) { b.appendChild(ckTeiItem(t, false)); });
+    ckPending(b, 'tei', L.teiPend, ckTeiItem);
+  }, L.teiPend.length ? '反映待ち ' + L.teiPend.length : null, L.tei.length + L.teiPend.length));
+}
+
 /* --- 全体 refresh --- */
 function refresh() {
   $('#shell').dataset.mode = state.mode;
@@ -7439,6 +7841,8 @@ function refresh() {
   if (state.mode === 'project') { renderProjectTab(); return; }
   if (state.mode === 'month') { renderMonthTab(); return; }
   if (state.mode === 'often') { renderDocsTab(); return; }
+  if (state.mode === 'check') { renderCheckTab(); return; }
+  syncCheckBadge();
   if (state.mode !== 'week') return;
 
   var wk = state.week;
@@ -7558,9 +7962,13 @@ function verifyPlacement(t, exp) {
 /* 画面に戻ってきたら取り直す（ホーム画面追加のスマホには更新ボタンが無い） */
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState !== 'visible' || !state.weekStart) return;
-  if (Date.now() - lastLoadAt > 60000) { state.schoolWide = null; reloadWeek(); }   /* 週外の日のキャッシュも捨てる（2026-09-18） */
+  if (Date.now() - lastLoadAt > 60000) { state.schoolWide = null; reloadWeek(); }
+  loadChecks(state.mode === 'check');   /* Check の件数（ホーム画面のバッジも）を今に合わせる */   /* 週外の日のキャッシュも捨てる（2026-09-18） */
 });
 
+
+$('#check-banner').addEventListener('click', function () { $('#tabs button[data-mode="check"]').click(); });
+setTimeout(function () { loadChecks(true); }, 1500);   /* 週の読み込みを先に通す */
 
 /* タブ */
 $('#tabs').addEventListener('click', function (e) {
@@ -7581,6 +7989,7 @@ $('#tabs').addEventListener('click', function (e) {
   }
   if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
+  if (state.mode === 'check') loadChecks(true);   /* タブに入るたび取り直す（2026-11-11） */
   if (state.mode === 'often') { state.docs = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; }  /* 〃 */
   if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; state.sciLessons = null; state.sciLessonsError = ''; state.sciSel = null; }  /* 〃 */
   withTransition(refresh);

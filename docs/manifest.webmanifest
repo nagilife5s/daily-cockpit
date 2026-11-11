@@ -1,0 +1,13 @@
+{
+  "name": "Daily-Cockpit",
+  "short_name": "Cockpit",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDF3F6",
+  "theme_color": "#EDF3F6",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

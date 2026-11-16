@@ -1975,6 +1975,7 @@ dcApplyLook();
   .ck-cands { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
   .ck-cl { color: var(--ink-3); font-size: 10px; }
   .ck-chip { border: 1px dashed color-mix(in oklch, var(--c-events) 50%, var(--line)); background: var(--card); color: var(--c-events); border-radius: 999px; padding: 3px 10px; font-size: var(--fs-xs); cursor: pointer; }
+  .ck-pj { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .ck-pend { display: block; margin-top: 10px; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); padding: 4px 2px; cursor: pointer; }
 }
 </style>
@@ -2666,7 +2667,7 @@ function dayIndexOf(ymd) { var dw = dowOf(ymd); return dw >= 1 && dw <= 5 ? dw -
    ========================================================================== */
 var DUMMY_CHECKS = {
   ai: [
-    { id: 'm1', db: 'task', url: '#', created: '2026-11-11T10:58:45Z', kubun: '新規', guessed: false, name: '校｜封筒の提出物を回収する', status: 'Not Started', date: '2026-11-25', deadline: '2026-11-25',
+    { id: 'm1', db: 'task', url: '#', created: '2026-11-11T10:58:45Z', kubun: '新規', guessed: false, name: '校｜封筒の提出物を回収する', status: 'Not Started', projectIds: [], date: '2026-11-25', deadline: '2026-11-25',
       lines: ['出典: 文字起こしログ（2026-11-10）朝の会', '保護者に書いてもらう封筒。11/25締切。'], pairs: [] },
     { id: 'm2', db: 'task', url: '#', created: '2026-11-08T08:50:00Z', kubun: '補足', guessed: true, name: '進｜面接練習の日程を決める', status: 'Not Started', date: '2026-11-12', deadline: null,
       lines: [], pairs: [{ ids: ['b1', 'b2'], created: '2026-11-11T09:29:00Z', source: '出典: 文字起こしログ（2026-11-11）09:12', text: '（録音より 11/11 9:12）木曜の放課後で調整したい' }] },
@@ -6333,6 +6334,7 @@ function pjDetailOf(pj) {
 function setTaskProject(task, pjId) {
   var before = (task.projectIds || []).slice();
   task.projectIds = pjId ? [pjId] : [];
+  DUMMY_TASKS.forEach(function (t) { if (t !== task && t.id === task.id) t.projectIds = task.projectIds.slice(); });  /* Check のカードから変えたときも週のタスクに合わせる */
   Store.updateTask(task.id, { projectIds: task.projectIds });
   state.projects && state.projects.forEach(function (p) { if (p.id === pjId || before.indexOf(p.id) >= 0) delete state.projectDetail[p.id]; });
   var nm = pjId && state.projectNames ? state.projectNames[pjId] : null;
@@ -7827,6 +7829,12 @@ function ckAiItem(a) {
     if (a.summary) meta.push(a.summary);
   }
   if (meta.length) card.appendChild(el('div', 'ck-meta', meta.join(' ／ ')));
+  if (a.db === 'task') {   /* AI が付けたプロジェクト。違えばその場で直す（2026-11-17） */
+    var pjr = el('div', 'ck-pj');
+    pjr.appendChild(el('span', 'ck-cl', 'PJ'));
+    pjr.appendChild(pjPicker(a));
+    card.appendChild(pjr);
+  }
   var pairs = a.kubun === '補足' ? ckUndoPairs(a) : [];
   var lines = a.kubun === '補足' && pairs.length
     ? [].concat.apply([], pairs.map(function (p) { return p.source ? [p.source, p.text] : [p.text]; }))

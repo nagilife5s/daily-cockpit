@@ -1165,7 +1165,7 @@ function createApi(env) {
         if (k === 'task') {
           const d = toJst_(propDateRaw_(p['実施予定日'])), dl = toJst_(propDateRaw_(p['期限']));
           return Object.assign(base, { name: propTitle_(p['名前']), status: propStatus_(p['status']),
-            date: d ? d.date : null, deadline: dl ? dl.date : null });
+            date: d ? d.date : null, deadline: dl ? dl.date : null, projectIds: propRelation_(p['PROJECT']) });
         }
         const d = toJst_(propDateRaw_(p['日付']));
         return Object.assign(base, { name: propTitle_(p['Name']), date: d ? d.date : null, time: d ? d.time : null,

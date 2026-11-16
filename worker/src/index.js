@@ -66,7 +66,7 @@ const BODY_MAX_BLOCKS = 200;
 
 /* 画面から呼んでよい関数（これ以外は 404） */
 const PUBLIC_FNS = [
-  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody',
+  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody', 'getProjectDetail',
   'updateLesson', 'createLesson', 'deleteLesson',
   'getDocs', 'searchDocs', 'updateDoc',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
@@ -917,7 +917,7 @@ function createApi(env) {
     },
 
     async getProjects() {
-      return (await queryAll_('project', { sorts: [{ property: '期間', direction: 'descending' }] })).map(pg => {
+      const projects = (await queryAll_('project', { sorts: [{ property: '期間', direction: 'descending' }] })).map(pg => {
         const p = pg.properties || {};
         const period = p['期間'] && p['期間'].date ? p['期間'].date : null;
         return {
@@ -934,6 +934,35 @@ function createApi(env) {
           naiyo: propText_(p['内容'])
         };
       });
+      /* 進捗: つながっているタスク（完了も含む）から数える（2026-11-17） */
+      const linked = await queryAll_('task', { filter: { property: 'PROJECT', relation: { is_not_empty: true } } });
+      const stat = {};
+      linked.map(mapTask_).forEach(t => (t.projectIds || []).forEach(pid => {
+        const s = stat[pid] || (stat[pid] = { total: 0, done: 0, next: null });
+        s.total++;
+        if (t.status === 'Done') { s.done++; return; }
+        /* 次にやること: 実施予定日がいちばん近い未完了（日付なしは最後） */
+        const key = t.date || '9999-99-99';
+        if (!s.next || key < (s.next.date || '9999-99-99')) s.next = { id: t.id, name: t.name, date: t.date };
+      }));
+      return projects.map(pj => Object.assign(pj, { progress: stat[pj.id] || { total: 0, done: 0, next: null } }));
+    },
+
+    /* 詳しい画面用: つながっているタスク（完了も）・書類・予定（2026-11-17） */
+    async getProjectDetail(pageId) {
+      assertId_(pageId);
+      /* リレーションはページ側だと25件で切れるので、相手の DB から逆に引く */
+      const [taskRows, docRows, schRows] = await Promise.all([
+        queryAll_('task', { filter: { property: 'PROJECT', relation: { contains: pageId } } }, 200),
+        queryAll_('docs', { filter: { property: 'DB_PROJECT', relation: { contains: pageId } } }, 100),
+        queryAll_('nagi', { filter: { property: 'PROJECT', relation: { contains: pageId } } }, 100)
+      ]);
+      return {
+        tasks: taskRows.map(mapTask_),
+        docs: docRows.map(mapDoc_),
+        schedule: schRows.map(mapLesson_).filter(Boolean)
+          .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
+      };
     },
 
     async getProjectBody(pageId) {
@@ -1031,6 +1060,10 @@ function createApi(env) {
         props['セッション開始'] = patch.sessionStart ? { date: { start: String(patch.sessionStart) } } : { date: null };
       }
       if ('order' in patch)    props['並び順']       = { number: patch.order == null ? null : Number(patch.order) };
+      if ('projectIds' in patch) {   /* プロジェクトの付け替え（2026-11-17）。存在する DB_PROJECT の id だけ */
+        const ids = (patch.projectIds || []).map(String).filter(x => /^[0-9a-f-]{32,36}$/i.test(x)).slice(0, 5);
+        props['PROJECT'] = { relation: ids.map(id => ({ id })) };
+      }
       if (!Object.keys(props).length) return { ok: true };
       const r = await patchPage_(taskId, { properties: props }, 'Notion への保存に失敗しました');
       /* 保存後の実際の値を返す（画面が書いた内容と照合して、食い違いを見つけるため。2026-11-05） */

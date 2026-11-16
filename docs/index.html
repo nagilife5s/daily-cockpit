@@ -880,6 +880,31 @@ dcApplyLook();
   .pj-back:active { transform: translateY(1px) scale(.97); }
   .pj-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .pj-head h2 { font-size: 18px; }
+  /* 進捗・書類・予定（2026-11-17） */
+  .pj-prog { display: flex; align-items: center; gap: 8px; flex-basis: 100%; }
+  .pj-prog .bar { flex: 1; max-width: 220px; height: 6px; border-radius: 999px; background: color-mix(in oklch, var(--c-events) 14%, var(--card)); overflow: hidden; }
+  .pj-prog .bar i { display: block; height: 100%; background: var(--c-events); border-radius: 999px; }
+  .pj-prog .num { font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  #project-root > .pj-prog { margin: -2px 0 14px; }
+  .pj-item { flex-wrap: wrap; }
+  .pj-next { flex-basis: 100%; font-size: var(--fs-xs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+  .pj-addbtn { border: 0; background: transparent; color: var(--c-events); font-size: var(--fs-xs); font-weight: 600; padding: 4px 2px; cursor: pointer; }
+  .pj-free, .pj-doc, .pj-schrow { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 7px 4px; font-size: var(--fs-sm); color: var(--ink); text-decoration: none; }
+  .pj-free, .pj-doc { cursor: pointer; }
+  .pj-free .tn, .pj-doc .tn, .pj-schrow .tn { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .pj-free .plus { flex: none; color: var(--c-events); font-size: var(--fs-xs); font-weight: 700; }
+  .pj-doc .meta, .pj-free .meta { flex: none; color: var(--ink-3); font-size: var(--fs-xs); }
+  .pj-doc .meta.due { color: var(--c-leave); }
+  .pj-schrow .d { flex: none; min-width: 7.5em; color: var(--ink-3); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+  .pj-schrow.done .tn { color: var(--ink-3); text-decoration: line-through; }
+  .pj-none { color: var(--ink-3); font-size: var(--fs-xs); padding: 6px 2px; }
+  .pj-docs, .pj-sch { margin-bottom: 18px; }
+  .pj-add, .pj-docs, .pj-sch, .pj-fold { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; box-shadow: var(--shadow); }
+  .pj-add { margin: -6px 0 18px; }
+  .pj-sch details summary, .pj-fold summary { cursor: pointer; color: var(--ink-3); font-size: var(--fs-xs); padding: 6px 2px; }
+  .pj-fold { margin-bottom: 14px; }
+  .pjsel { max-width: 9em; }
+  .pjsel.on { color: var(--c-roster); border-color: color-mix(in oklch, var(--c-roster) 40%, var(--line)); }
   .pj-head .meta { color: var(--ink-3); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
   .pj-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 18px; }
   .pj-open {
@@ -2708,7 +2733,10 @@ var Store = {
     }
     setTimeout(function () {
       if (MOCK_FAIL) { fail(new Error('mock failure')); return; }
-      done(DUMMY_PROJECTS);
+      done(DUMMY_PROJECTS.map(function (p, i) {
+        var ts = projTasksOf(p.id);
+        return Object.assign({}, p, { progress: { total: ts.length + i, done: i, next: ts[0] ? { name: ts[0].name, date: ts[0].date } : null } });
+      }));
     }, 600);
   },
   getMonth: function (ym, done, fail) {
@@ -2877,6 +2905,14 @@ var Store = {
       var seen = {};                                  /* getWeek が土日を concat 済みの週があるので重複を落とす */
       sched = sched.filter(function (r) { if (seen[r.id]) return false; seen[r.id] = 1; return true; });
       done({ date: date, schedule: sched, journal: jour, relationTitles: {} });
+    }, 400);
+  },
+  getProjectDetail: function (id, done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getProjectDetail(id); return; }
+    setTimeout(function () {
+      done({ tasks: projTasksOf(id).concat([{ id: 'dz1', name: '済んだタスクの例', status: 'Done', date: '2026-11-01', projectIds: [id] }]),
+             docs: [{ id: 'dd1', url: '#', name: '進路説明会 要項', kinds: ['進路'], deadline: '2026-11-28' }, { id: 'dd2', url: '#', name: '出願の手引き', kinds: ['通知'], jisshi: '2026-10-02' }],
+             schedule: [{ id: 'ds1', name: '進路説明会', date: '2026-11-25', time: '14:30' }, { id: 'ds2', name: '保護者会', date: '2026-10-10', time: null }] });
     }, 400);
   },
   getProjectBody: function (id, done, fail) {
@@ -3063,7 +3099,9 @@ var state = {
   docOpenId: null,     /* Docs タブ: 展開中の書類 */
   docQuery: '',        /* Docs タブ: 検索語 */
   docResults: null,    /* Docs タブ: 検索結果（null=非表示） */
-  projectNames: {},    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
+  projectNames: {},
+  projectDetail: {},   /* {projectId: {tasks, docs, schedule}}（2026-11-17） */
+  pjAddOpen: false, pjDocsAll: null,    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
   /* Main タブの表: 'day'(表示日の1列) | 'week'(表示週) | 'school'(学校全体)。
      2026-09-18 に 'mine'(自分) を Week に改名し Day を追加。最後に選んだものを覚える */
   gridMode: (function () {
@@ -4690,7 +4728,8 @@ function taskItem(task, opts) {
     });
     row.appendChild(sel);
   }
-  (task.projectIds || []).forEach(function (pid) {
+  if (task.status !== 'Done') row.appendChild(pjPicker(task));   /* プロジェクトの付け替え（2026-11-17） */
+  else (task.projectIds || []).forEach(function (pid) {
     var pn = state.projectNames && state.projectNames[pid];
     if (!pn) return;
     var pc = el('span', 'kchip pchip', pn);
@@ -6261,6 +6300,80 @@ function projTasksOf(pjId) {
   return DUMMY_TASKS.filter(function (t) { return (t.projectIds || []).indexOf(pjId) >= 0; });
 }
 
+/* ---- 進捗（つながっているタスクから自動。2026-11-17） ---- */
+function pjDaysLeft(end) {
+  if (!end) return null;
+  return Math.round((Date.parse(end + 'T00:00:00Z') - Date.parse(todayStr() + 'T00:00:00Z')) / 86400000);
+}
+function pjProgressBar(pr) {
+  var w = el('span', 'pj-prog');
+  var bar = el('span', 'bar');
+  var fill = el('i');
+  fill.style.width = (pr && pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%';
+  bar.appendChild(fill);
+  w.appendChild(bar);
+  w.appendChild(el('span', 'num', pr && pr.total ? '完了 ' + pr.done + '/' + pr.total : 'タスクなし'));
+  return w;
+}
+/* 詳しい画面のデータ（タスク・書類・予定）。開くたびに取り直す */
+function pjDetailOf(pj) {
+  var d = state.projectDetail[pj.id];
+  if (d !== undefined) return d;
+  state.projectDetail[pj.id] = null;
+  Store.getProjectDetail(pj.id, function (res) {
+    state.projectDetail[pj.id] = res || { tasks: [], docs: [], schedule: [] };
+    if (state.mode === 'project' && state.projectId === pj.id) renderProjectTab();
+  }, function () {
+    state.projectDetail[pj.id] = { error: true, tasks: [], docs: [], schedule: [] };
+    if (state.mode === 'project' && state.projectId === pj.id) renderProjectTab();
+  });
+  return null;
+}
+/* タスクのプロジェクトを付け替える（PJ チップと「未割り当てから追加」で共用） */
+function setTaskProject(task, pjId) {
+  var before = (task.projectIds || []).slice();
+  task.projectIds = pjId ? [pjId] : [];
+  Store.updateTask(task.id, { projectIds: task.projectIds });
+  state.projects && state.projects.forEach(function (p) { if (p.id === pjId || before.indexOf(p.id) >= 0) delete state.projectDetail[p.id]; });
+  var nm = pjId && state.projectNames ? state.projectNames[pjId] : null;
+  rerenderTasks();
+  if (state.mode === 'project') renderProjectTab();
+  showToast('「' + task.name + '」を' + (nm ? '「' + nm + '」に付けました' : 'プロジェクトから外しました'), function () {
+    task.projectIds = before;
+    Store.updateTask(task.id, { projectIds: before });
+    state.projectDetail = {};
+    rerenderTasks();
+    if (state.mode === 'project') renderProjectTab();
+  });
+}
+/* 選べるプロジェクト: 終わっていないもの（一覧を読んでいなければ名前の表から全部） */
+function pjChoices() {
+  if (state.projects) return state.projects.filter(function (p) { return p.status !== 'Done'; })
+    .map(function (p) { return { id: p.id, name: p.name }; });
+  var m = state.projectNames || {};
+  return Object.keys(m).map(function (id) { return { id: id, name: m[id] }; });
+}
+function pjPicker(task) {
+  var sel = document.createElement('select');
+  sel.className = 'ksel pjsel' + ((task.projectIds || []).length ? ' on' : '');
+  sel.title = 'プロジェクトを付ける';
+  var cur = (task.projectIds || [])[0] || '';
+  var op0 = document.createElement('option');
+  op0.value = ''; op0.textContent = cur ? '（外す）' : '＋PJ';
+  sel.appendChild(op0);
+  var list = pjChoices();
+  if (cur && !list.some(function (p) { return p.id === cur; })) list.unshift({ id: cur, name: (state.projectNames || {})[cur] || '（終了したPJ）' });
+  list.sort(function (a, b) { return a.name.localeCompare(b.name, 'ja'); }).forEach(function (p) {
+    var op = document.createElement('option');
+    op.value = p.id; op.textContent = p.name;
+    sel.appendChild(op);
+  });
+  sel.value = cur;
+  sel.addEventListener('click', function (e) { e.stopPropagation(); });
+  sel.addEventListener('change', function () { setTaskProject(task, sel.value || null); });
+  return sel;
+}
+
 function renderProjectTab() {
   var root = $('#project-root');
   root.textContent = '';
@@ -6314,11 +6427,12 @@ function renderProjectList(root) {
       b.appendChild(el('span', 'tn', p.name));
       if (p.importance) b.appendChild(el('span', 'imp', p.importance));
       b.appendChild(projStatusChip(p.status));
-      var open = projTasksOf(p.id).filter(isOpen).length;
       var meta = [];
-      if (p.periodEnd) meta.push('〜' + md(p.periodEnd));
-      if (open) meta.push('タスク' + open);
+      var left = pjDaysLeft(p.periodEnd);
+      if (p.periodEnd) meta.push('〜' + md(p.periodEnd) + (left != null && left >= 0 && left <= 60 ? '（あと' + left + '日）' : ''));
       if (meta.length) b.appendChild(el('span', 'meta', meta.join('・')));
+      b.appendChild(pjProgressBar(p.progress));
+      if (p.progress && p.progress.next) b.appendChild(el('span', 'pj-next', '次: ' + p.progress.next.name + (p.progress.next.date ? '（' + md(p.progress.next.date) + '）' : '')));
       b.addEventListener('click', function () {
         state.projectId = p.id;
         withTransition(renderProjectTab);
@@ -6343,18 +6457,18 @@ function renderProjectDetail(root, pj) {
   if (pj.importance) head.appendChild(el('span', 'imp', pj.importance));
   head.appendChild(projStatusChip(pj.status));
   if (pj.periodStart || pj.periodEnd) {
-    head.appendChild(el('span', 'meta', (pj.periodStart ? md(pj.periodStart) : '') + '〜' + (pj.periodEnd ? md(pj.periodEnd) : '')));
+    var left = pjDaysLeft(pj.periodEnd);
+    head.appendChild(el('span', 'meta', (pj.periodStart ? md(pj.periodStart) : '') + '〜' + (pj.periodEnd ? md(pj.periodEnd) : '') +
+      (left != null && left >= 0 ? '（あと' + left + '日）' : '')));
   }
-  if (pj.url) {                                       /* Notion のページへ */
+  if (pj.url) {
     var a = document.createElement('a');
-    a.className = 'pj-open';
-    a.href = pj.url;
-    a.target = '_blank';
-    a.rel = 'noopener';
+    a.className = 'pj-open'; a.href = pj.url; a.target = '_blank'; a.rel = 'noopener';
     a.textContent = 'Notion で開く ↗';
     head.appendChild(a);
   }
   root.appendChild(head);
+  root.appendChild(pjProgressBar(pj.progress));
 
   var cards = el('div', 'pj-cards');
   [['GOAL', pj.goal], ['Action Plan', pj.plan], ['内容', pj.naiyo]].forEach(function (pair) {
@@ -6366,46 +6480,134 @@ function renderProjectDetail(root, pj) {
   });
   if (cards.children.length) root.appendChild(cards);
 
-  /* ---- ページ本文（開いたときに取得。取得済みはキャッシュから） ---- */
-  var bodyCard = el('div', 'card pj-bodycard');
-  bodyCard.appendChild(el('h3', null, '本文'));
-  var bd = el('div', 'pj-body');
-  bodyCard.appendChild(bd);
-  root.appendChild(bodyCard);
+  var det = pjDetailOf(pj);
 
-  function showBody(html) {
-    bd.innerHTML = html || '<p class="none">本文はありません</p>';
-  }
-  var cached = state.projectBodies[pj.id];
-  if (cached === undefined) {                          /* 未取得 → 取りに行く */
-    state.projectBodies[pj.id] = null;
-    bd.innerHTML = '<p class="none">読み込み中…</p>';
-    Store.getProjectBody(pj.id, function (res) {
-      state.projectBodies[pj.id] = (res && res.html) || '';
-      if (state.mode === 'project' && state.projectId === pj.id) {
-        var cur = $('#project-root .pj-body');
-        if (cur) cur.innerHTML = state.projectBodies[pj.id] || '<p class="none">本文はありません</p>';
-      }
-    }, function () {
-      state.projectBodies[pj.id] = '<p class="none">本文の取得に失敗しました。「Notion で開く」から確認してください。</p>';
-      if (state.mode === 'project' && state.projectId === pj.id) {
-        var cur = $('#project-root .pj-body');
-        if (cur) cur.innerHTML = state.projectBodies[pj.id];
-      }
+  /* ---- 未完了タスク（週 payload の allTasks を正にする。完了・今日へなどがそのまま効く） ---- */
+  var open = projTasksOf(pj.id).filter(isOpen);
+  if (det && det.tasks) {     /* allTasks に無い未完了（古いもの）も拾う */
+    det.tasks.forEach(function (t) {
+      if (isOpen(t) && !open.some(function (x) { return x.id === t.id; })) open.push(t);
     });
-  } else if (cached === null) {                        /* 取得中 */
-    bd.innerHTML = '<p class="none">読み込み中…</p>';
-  } else {
-    showBody(cached);
+  }
+  open.sort(bySort);
+  root.appendChild(taskGroup('タスク', open, null, { showDate: true, periodSel: true, adjust: true },
+                             'このプロジェクトの未完了タスクはありません'));
+
+  /* 未割り当てのタスクから追加 */
+  var addWrap = el('div', 'pj-add');
+  var addBtn = el('button', 'pj-addbtn', state.pjAddOpen ? '▾ 未割り当てのタスクから追加' : '＋ 未割り当てのタスクから追加');
+  addBtn.addEventListener('click', function () { state.pjAddOpen = !state.pjAddOpen; renderProjectTab(); });
+  addWrap.appendChild(addBtn);
+  if (state.pjAddOpen) {
+    var free = DUMMY_TASKS.filter(function (t) { return isOpen(t) && !(t.projectIds || []).length; });
+    free.sort(bySort);
+    if (!free.length) addWrap.appendChild(el('div', 'pj-none', '未割り当ての未完了タスクはありません'));
+    free.forEach(function (t) {
+      var r = el('button', 'pj-free');
+      r.appendChild(el('span', 'tn', t.name));
+      if (t.date) r.appendChild(el('span', 'meta', md(t.date)));
+      r.appendChild(el('span', 'plus', '＋ 追加'));
+      r.addEventListener('click', function () { setTaskProject(t, pj.id); });
+      addWrap.appendChild(r);
+    });
+  }
+  root.appendChild(addWrap);
+
+  if (!det) { root.appendChild(el('div', 'stateband', '書類・予定を読み込み中…')); return; }
+  if (det.error) root.appendChild(el('div', 'stateband', '書類・予定の取得に失敗しました。'));
+
+  /* ---- 書類 ---- */
+  var docs = (det.docs || []).slice().sort(function (a, b) {
+    return (b.deadline || b.jisshi || '').localeCompare(a.deadline || a.jisshi || '');
+  });
+  var ds = el('div', 'tgroup pj-docs');
+  var dh = el('h2', 'sec-h');
+  dh.appendChild(iconSpan('often'));
+  dh.appendChild(document.createTextNode('書類 '));
+  dh.appendChild(el('span', 'cnt', String(docs.length)));
+  ds.appendChild(dh);
+  if (!docs.length) ds.appendChild(el('div', 'pj-none', 'つながっている書類はありません'));
+  var showAllDocs = state.pjDocsAll === pj.id;
+  docs.slice(0, showAllDocs ? docs.length : 8).forEach(function (d) {
+    var r = document.createElement('a');
+    r.className = 'pj-doc'; r.target = '_blank'; r.rel = 'noopener';
+    if (d.url) r.href = d.url;
+    r.appendChild(el('span', 'tn', d.name));
+    (d.kinds || []).slice(0, 2).forEach(function (k) { r.appendChild(el('span', 'doc-kind', k)); });
+    if (d.deadline) r.appendChild(el('span', 'meta due', '〆' + md(d.deadline)));
+    else if (d.jisshi) r.appendChild(el('span', 'meta', md(d.jisshi)));
+    ds.appendChild(r);
+  });
+  if (docs.length > 8) {
+    var more = el('button', 'pj-addbtn', showAllDocs ? '少なく表示' : 'ほか ' + (docs.length - 8) + '件を表示');
+    more.addEventListener('click', function () { state.pjDocsAll = showAllDocs ? null : pj.id; renderProjectTab(); });
+    ds.appendChild(more);
+  }
+  root.appendChild(ds);
+
+  /* ---- 関連する予定（これからのもの。過去はたたむ） ---- */
+  var today = todayStr();
+  var sch = det.schedule || [];
+  var up = sch.filter(function (s) { return (s.endDate || s.date) >= today; });
+  var past = sch.filter(function (s) { return (s.endDate || s.date) < today; }).reverse();
+  var ss = el('div', 'tgroup pj-sch');
+  var sh = el('h2', 'sec-h');
+  sh.appendChild(iconSpan('month'));
+  sh.appendChild(document.createTextNode('予定 '));
+  sh.appendChild(el('span', 'cnt', String(up.length)));
+  ss.appendChild(sh);
+  function schRow(s) {
+    var r = el('div', 'pj-schrow');
+    r.appendChild(el('span', 'd', mdw(s.date) + (s.time ? ' ' + s.time : '')));
+    r.appendChild(el('span', 'tn', s.name));
+    return r;
+  }
+  if (!up.length) ss.appendChild(el('div', 'pj-none', 'これからの予定はありません'));
+  up.forEach(function (s) { ss.appendChild(schRow(s)); });
+  if (past.length) {
+    var pd = document.createElement('details');
+    pd.appendChild(el('summary', null, '終わった予定 ' + past.length + '件'));
+    past.forEach(function (s) { pd.appendChild(schRow(s)); });
+    ss.appendChild(pd);
+  }
+  root.appendChild(ss);
+
+  /* ---- 完了したタスク（たたむ） ---- */
+  var done = (det.tasks || []).filter(function (t) { return t.status === 'Done'; })
+    .sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  if (done.length) {
+    var dd = document.createElement('details');
+    dd.className = 'pj-fold';
+    dd.appendChild(el('summary', null, '完了したタスク ' + done.length + '件'));
+    done.forEach(function (t) {
+      var r = el('div', 'pj-schrow done');
+      r.appendChild(el('span', 'd', t.date ? md(t.date) : '—'));
+      r.appendChild(el('span', 'tn', t.name));
+      dd.appendChild(r);
+    });
+    root.appendChild(dd);
   }
 
-  var tasks = projTasksOf(pj.id);
-  var open = tasks.filter(isOpen);
-  open.sort(bySort);
-  root.appendChild(taskGroup('タスク', open, null, { showDate: true, periodSel: true },
-                             'このプロジェクトの未完了タスクはありません'));
-  var done = tasks.filter(function (t) { return t.status === 'Done'; });
-  if (done.length) root.appendChild(taskGroup('完了', done, null, { showDate: true }));
+  /* ---- Notion の本文（たたむ。開いたときに取得） ---- */
+  var bdet = document.createElement('details');
+  bdet.className = 'pj-fold';
+  bdet.appendChild(el('summary', null, 'Notion の本文'));
+  var bd = el('div', 'pj-body');
+  bdet.appendChild(bd);
+  function paint() {
+    var c = state.projectBodies[pj.id];
+    bd.innerHTML = c == null ? '<p class="none">読み込み中…</p>' : (c || '<p class="none">本文はありません</p>');
+  }
+  bdet.addEventListener('toggle', function () {
+    if (!bdet.open) return;
+    if (state.projectBodies[pj.id] === undefined) {
+      state.projectBodies[pj.id] = null;
+      Store.getProjectBody(pj.id, function (res) { state.projectBodies[pj.id] = (res && res.html) || ''; paint(); },
+        function () { state.projectBodies[pj.id] = '<p class="none">本文の取得に失敗しました。「Notion で開く」から確認してください。</p>'; paint(); });
+    }
+    paint();
+  });
+  root.appendChild(bdet);
 }
 
 /* ==== 月タブ（Phase 4。ナギレンダーの月カレンダー。表示のみ） ====
@@ -7988,7 +8190,7 @@ $('#tabs').addEventListener('click', function (e) {
     if (!state.selectedDate) state.selectedDate = realToday();
     state.todayView = (new Date().getHours() >= 13) ? 'close' : 'setup';
   }
-  if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; }  /* タブに入るたび Notion から取り直す */
+  if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; state.projectDetail = {}; state.pjAddOpen = false; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
   if (state.mode === 'check') loadChecks(true);   /* タブに入るたび取り直す（2026-11-11） */
   if (state.mode === 'often') { state.docs = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; }  /* 〃 */

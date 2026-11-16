@@ -1975,6 +1975,19 @@ dcApplyLook();
   .ck-cands { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
   .ck-cl { color: var(--ink-3); font-size: 10px; }
   .ck-chip { border: 1px dashed color-mix(in oklch, var(--c-events) 50%, var(--line)); background: var(--card); color: var(--c-events); border-radius: 999px; padding: 3px 10px; font-size: var(--fs-xs); cursor: pointer; }
+  .doc-sec { margin-bottom: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; box-shadow: var(--shadow); }
+  .doc-sec > .sec-h { margin-bottom: 4px; }
+  .doc-sec > .sec-h .note { margin-left: 6px; }
+  .doc-pj { flex: none; font-size: 10px; color: var(--c-roster); border: 1px solid color-mix(in oklch, var(--c-roster) 35%, var(--line)); border-radius: 999px; padding: 0 7px; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-item .meta .urgent { color: var(--c-leave); font-weight: 700; }
+  .doc-item .meta .star { color: var(--gold); }
+  .doc-files { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .doc-file { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 12px; font-size: var(--fs-xs); color: var(--c-events); text-decoration: none; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-file.wait { color: var(--ink-3); }
+  .doc-body { max-height: 420px; overflow: auto; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 4px; }
+  .doc-kindrow { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 8px 2px; font-size: var(--fs-sm); color: var(--ink); cursor: pointer; }
+  .doc-kindrow.open { font-weight: 700; color: var(--c-events); }
+  .doc-clear { margin-left: auto; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); cursor: pointer; }
   .ck-pj { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .ck-pend { display: block; margin-top: 10px; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); padding: 4px 2px; cursor: pointer; }
 }
@@ -2825,6 +2838,21 @@ var Store = {
     if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getChecks(); return; }
     setTimeout(function () { done(DUMMY_CHECKS); }, 400);
   },
+  getDocsHome: function (done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocsHome(); return; }
+    setTimeout(function () {
+      var all = DUMMY_DOCS.map(function (d, i) { return Object.assign({ projectIds: [], created: '2026-11-1' + (i % 7) }, d); });
+      done({ due: all.filter(function (d) { return d.deadline; }).slice(0, 3), recent: all.slice(0, 3), often: all.filter(function (d) { return d.hinshutsu; }) });
+    }, 400);
+  },
+  getDocsByKind: function (kind, done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocsByKind(kind); return; }
+    setTimeout(function () { done(DUMMY_DOCS.filter(function (d) { return (d.kinds || []).indexOf(kind) >= 0; })); }, 300);
+  },
+  getDocBody: function (id, done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocBody(id); return; }
+    setTimeout(function () { done({ html: '<p>（ダミーの本文）要項の内容がここに出ます。</p>', files: [{ name: '要項.pdf', url: '#' }] }); }, 300);
+  },
   getDocs: function (done, fail) {
     if (IS_GAS) {
       google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocs();
@@ -3101,7 +3129,8 @@ var state = {
   docQuery: '',        /* Docs タブ: 検索語 */
   docResults: null,    /* Docs タブ: 検索結果（null=非表示） */
   projectNames: {},
-  projectDetail: {},   /* {projectId: {tasks, docs, schedule}}（2026-11-17） */
+  projectDetail: {},
+  docsHome: null, docKinds: {}, docKindOpen: null, docBodies: {},   /* Docs タブ（2026-11-17） */   /* {projectId: {tasks, docs, schedule}}（2026-11-17） */
   pjAddOpen: false, pjDocsAll: null,    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
   /* Main タブの表: 'day'(表示日の1列) | 'week'(表示週) | 'school'(学校全体)。
      2026-09-18 に 'mine'(自分) を Week に改名し Day を追加。最後に選んだものを覚える */
@@ -7040,45 +7069,77 @@ document.addEventListener('click', function (e) {
   openLessonEditor({ rec: rec }, e.clientX, e.clientY);
 });
 
-/* ==== Docs タブ（Phase 5。書類DB の頻出一覧＋検索＋頻出トグル） ====
-   編集できるのは 頻出チェックだけ（README §4）。本文が要るときは「Notion で開く」 */
-function docItem(doc) {
-  var item = el('div', 'doc-item');
+/* ==== Docs タブ（2026-11-17 作り直し）。検索 → 〆切が近い → 最近届いた → 頻出 → 種類ごと（たたむ）
+   書類を押すと、本文と添付をその場で開く。書けるのは 頻出 だけ ==== */
+var DOC_KINDS = ['進路', 'クラス', '学校予定・全体', '提出物', '事務書類', '出張', '生徒指導', '保健・給食',
+                 '教務部', '研究部', '生徒会', '教科', '部活・剣道', '学校基本情報', '資料'];
+function docItem(doc, sec) {
+  var okey = (sec || '') + ':' + doc.id;   /* 同じ書類が複数の節に出るので、開くのは押した節だけ */
+  var item = el('div', 'doc-item' + (state.docOpenId === okey ? ' open' : ''));
   var head = el('button', 'doc-head');
   head.appendChild(el('span', 'tn', doc.name));
+  (doc.projectIds || []).slice(0, 1).forEach(function (pid) {
+    var pn = state.projectNames && state.projectNames[pid];
+    if (pn) head.appendChild(el('span', 'doc-pj', pn));
+  });
   (doc.kinds || []).slice(0, 2).forEach(function (k) { head.appendChild(el('span', 'doc-kind', k)); });
   var meta = el('span', 'meta');
-  if (doc.deadline) meta.appendChild(el('span', 'due', '〆' + md(doc.deadline)));
+  if (doc.deadline) meta.appendChild(el('span', 'due' + (doc.deadline <= todayStr() ? ' urgent' : ''), '〆' + mdw(doc.deadline)));
+  else if (doc.jisshi) meta.appendChild(el('span', null, md(doc.jisshi)));
+  if (doc.hinshutsu) meta.appendChild(el('span', 'star', '★'));
   if (meta.children.length) head.appendChild(meta);
   head.addEventListener('click', function () {
-    state.docOpenId = state.docOpenId === doc.id ? null : doc.id;
+    state.docOpenId = state.docOpenId === okey ? null : okey;
     renderDocsTab();
   });
   item.appendChild(head);
 
-  if (state.docOpenId === doc.id) {
+  if (state.docOpenId === okey) {
     var dt = el('div', 'doc-detail');
-    [['メモ', doc.memo],
-     ['進捗状況', doc.shinchoku],
-     ['〆切', doc.deadline ? md(doc.deadline) : ''],
-     ['実施日', doc.jisshi ? md(doc.jisshi) : ''],
-     ['種類', (doc.kinds || []).join('・')],
-     ['年度', (doc.years || []).join('・')],
-     ['添付', (doc.files || []).join('\n')]].forEach(function (pair) {
+    [['メモ', doc.memo], ['進捗状況', doc.shinchoku],
+     ['〆切', doc.deadline ? mdw(doc.deadline) : ''], ['実施日', doc.jisshi ? mdw(doc.jisshi) : ''],
+     ['年度', (doc.years || []).join('・')]].forEach(function (pair) {
       if (!pair[1]) return;
       var row = el('div', 'row');
       row.appendChild(el('b', null, pair[0]));
       row.appendChild(el('span', null, pair[1]));
       dt.appendChild(row);
     });
+    /* 添付と本文（開いたときに取り直す。添付の URL は1時間で切れる） */
+    var body = state.docBodies[doc.id];
+    var files = el('div', 'doc-files');
+    var bd = el('div', 'pj-body doc-body');
+    if (body === undefined) {
+      state.docBodies[doc.id] = null;
+      Store.getDocBody(doc.id, function (res) {
+        state.docBodies[doc.id] = res || { html: '', files: [] };
+        if (state.mode === 'often' && state.docOpenId === okey) renderDocsTab();
+      }, function () {
+        state.docBodies[doc.id] = { html: '<p class="none">本文の取得に失敗しました。「Notion で開く」から確認してください。</p>', files: [] };
+        if (state.mode === 'often' && state.docOpenId === okey) renderDocsTab();
+      });
+    }
+    if (!body) {
+      bd.innerHTML = '<p class="none">読み込み中…</p>';
+      (doc.files || []).forEach(function (n) { files.appendChild(el('span', 'doc-file wait', '📎 ' + n)); });
+    } else {
+      (body.files || []).forEach(function (f) {
+        var a = document.createElement('a');
+        a.className = 'doc-file'; a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = '📎 ' + f.name;
+        files.appendChild(a);
+      });
+      bd.innerHTML = body.html || '<p class="none">本文はありません</p>';
+    }
+    if (files.children.length) dt.appendChild(files);
+    dt.appendChild(bd);
 
     var acts = el('div', 'acts');
     if (doc.url) {
-      var a = document.createElement('a');
-      a.className = 'act open';
-      a.href = doc.url; a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = 'Notion で開く ↗';
-      acts.appendChild(a);
+      var a2 = document.createElement('a');
+      a2.className = 'act open'; a2.href = doc.url; a2.target = '_blank'; a2.rel = 'noopener';
+      a2.textContent = 'Notion で開く ↗';
+      acts.appendChild(a2);
     }
     var pin = el('button', 'act pin', doc.hinshutsu ? '★ 頻出から外す' : '☆ 頻出に追加');
     pin.addEventListener('click', function () { toggleHinshutsu(doc); });
@@ -7092,12 +7153,14 @@ function docItem(doc) {
 function toggleHinshutsu(doc) {
   doc.hinshutsu = !doc.hinshutsu;
   Store.updateDoc(doc.id, { hinshutsu: doc.hinshutsu });
-  if (state.docs) {
-    state.docs = state.docs.filter(function (d) { return d.id !== doc.id; });
-    if (doc.hinshutsu) state.docs.push(doc);
+  var h = state.docsHome;
+  if (h) {
+    h.often = h.often.filter(function (d) { return d.id !== doc.id; });
+    if (doc.hinshutsu) h.often.push(doc);
   }
-  /* 検索結果側の同じ書類にも反映しておく（同一オブジェクトなら不要だが安全側） */
-  (state.docResults || []).forEach(function (d) { if (d.id === doc.id) d.hinshutsu = doc.hinshutsu; });
+  /* 同じ書類が別の節にも出ているので、全部に反映する */
+  [state.docResults || []].concat(h ? [h.due, h.recent] : [], Object.keys(state.docKinds).map(function (k) { return state.docKinds[k] || []; }))
+    .forEach(function (list) { list.forEach(function (d) { if (d.id === doc.id) d.hinshutsu = doc.hinshutsu; }); });
   renderDocsTab();
 }
 
@@ -7106,16 +7169,29 @@ function docSort(a, b) {
   if (ad !== bd) return ad < bd ? -1 : 1;
   return a.name < b.name ? -1 : 1;
 }
+function docSection(root, icon, title, list, emptyText, note, key) {
+  var sec = el('div', 'doc-sec');
+  var h = el('h2', 'sec-h');
+  h.appendChild(iconSpan(icon));
+  h.appendChild(document.createTextNode(title + ' '));
+  h.appendChild(el('span', 'cnt', String(list.length)));
+  if (note) h.appendChild(el('span', 'note', note));
+  sec.appendChild(h);
+  if (!list.length) sec.appendChild(el('div', 'doc-empty', emptyText));
+  list.forEach(function (d) { sec.appendChild(docItem(d, key)); });
+  root.appendChild(sec);
+}
 
 function renderDocsTab() {
   var root = $('#docs-root');
+  var y = window.scrollY;
   root.textContent = '';
 
-  /* 検索バー（書類名の部分一致で書類DB全体から探し、頻出に追加する入口） */
+  /* 検索（名前とメモ） */
   var bar = el('div', 'docsearch');
   var inp = document.createElement('input');
   inp.type = 'search';
-  inp.placeholder = '書類名で検索（頻出に追加したい書類を探す）';
+  inp.placeholder = '書類を検索（名前・メモ）';
   inp.value = state.docQuery;
   var go = el('button', null, '検索');
   function doSearch() {
@@ -7142,34 +7218,29 @@ function renderDocsTab() {
   bar.appendChild(go);
   root.appendChild(bar);
 
-  /* 検索結果（検索中のみ表示） */
   if (state.docResults) {
+    var rs = el('div', 'doc-sec');
     var rh = el('h2', 'sec-h');
     rh.appendChild(iconSpan('inbox'));
     rh.appendChild(document.createTextNode('検索結果 '));
     rh.appendChild(el('span', 'cnt', String(state.docResults.length)));
-    root.appendChild(rh);
-    if (!state.docResults.length) {
-      root.appendChild(el('div', 'doc-empty', state.docResults._done ? '見つかりませんでした' : '検索中…'));
-    } else {
-      state.docResults.forEach(function (d) { root.appendChild(docItem(d)); });
-    }
+    var clr = el('button', 'doc-clear', '× 閉じる');
+    clr.addEventListener('click', function () { state.docQuery = ''; state.docResults = null; renderDocsTab(); });
+    rh.appendChild(clr);
+    rs.appendChild(rh);
+    if (!state.docResults.length) rs.appendChild(el('div', 'doc-empty', state.docResults._done ? '見つかりませんでした' : '検索中…'));
+    state.docResults.forEach(function (d) { rs.appendChild(docItem(d, 'q')); });
+    root.appendChild(rs);
   }
 
-  /* 頻出一覧 */
-  var h = el('h2', 'sec-h');
-  h.appendChild(iconSpan('often'));
-  h.appendChild(document.createTextNode('よく使う書類 '));
-  h.appendChild(el('span', 'cnt', state.docs ? String(state.docs.length) : ''));
-  root.appendChild(h);
-
-  if (!state.docs) {
+  var h = state.docsHome;
+  if (!h) {
     root.appendChild(el('div', 'stateband', '読み込み中…'));
     if (renderDocsTab._loading) return;
     renderDocsTab._loading = true;
-    Store.getDocs(function (list) {
+    Store.getDocsHome(function (res) {
       renderDocsTab._loading = false;
-      state.docs = list || [];
+      state.docsHome = res || { due: [], recent: [], often: [] };
       if (state.mode === 'often') withTransition(renderDocsTab);
     }, function () {
       renderDocsTab._loading = false;
@@ -7184,14 +7255,46 @@ function renderDocsTab() {
     });
     return;
   }
-  if (!state.docs.length) {
-    root.appendChild(el('div', 'doc-empty', '頻出の書類はまだありません。上の検索から追加できます'));
-    return;
-  }
-  var docs = state.docs.slice();
-  docs.sort(docSort);
-  docs.forEach(function (d) { root.appendChild(docItem(d)); });
+
+  docSection(root, 'deadline', '〆切が近い', h.due.slice().sort(docSort), '2週間以内に〆切の書類はありません', '2週間以内', 'due');
+  docSection(root, 'inbox', '最近届いた', h.recent, 'この1週間に届いた書類はありません', '7日以内', 'recent');
+  docSection(root, 'often', '頻出', h.often.slice().sort(docSort), '頻出の書類はまだありません。書類を開いて「☆ 頻出に追加」', null, 'often');
+
+  /* 種類ごと（開いたときだけ取る） */
+  var ks = el('div', 'doc-sec');
+  var kh = el('h2', 'sec-h');
+  kh.appendChild(iconSpan('book'));
+  kh.appendChild(document.createTextNode('種類ごと'));
+  ks.appendChild(kh);
+  DOC_KINDS.forEach(function (k) {
+    var open = state.docKindOpen === k;
+    var b = el('button', 'doc-kindrow' + (open ? ' open' : ''), (open ? '▾ ' : '▸ ') + k);
+    b.addEventListener('click', function () {
+      state.docKindOpen = open ? null : k;
+      if (!open && state.docKinds[k] === undefined) {
+        state.docKinds[k] = null;
+        Store.getDocsByKind(k, function (list) {
+          state.docKinds[k] = list || [];
+          if (state.mode === 'often') renderDocsTab();
+        }, function () { state.docKinds[k] = []; if (state.mode === 'often') renderDocsTab(); });
+      }
+      renderDocsTab();
+    });
+    ks.appendChild(b);
+    if (open) {
+      var list = state.docKinds[k];
+      if (!list) ks.appendChild(el('div', 'doc-empty', '読み込み中…'));
+      else if (!list.length) ks.appendChild(el('div', 'doc-empty', 'この種類の書類はありません'));
+      else {
+        list.forEach(function (d) { ks.appendChild(docItem(d, 'k')); });
+        if (list.length >= 60) ks.appendChild(el('div', 'doc-empty', '新しい順に60件まで。古いものは検索で探してください'));
+      }
+    }
+  });
+  root.appendChild(ks);
+  window.scrollTo(0, y);
 }
+
 
 /* ==========================================================================
    Science タブ（2026-10-02。設計メモ｜理科タブ.md）。Phase 1 は閲覧のみ
@@ -8201,7 +8304,7 @@ $('#tabs').addEventListener('click', function (e) {
   if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; state.projectDetail = {}; state.pjAddOpen = false; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
   if (state.mode === 'check') loadChecks(true);   /* タブに入るたび取り直す（2026-11-11） */
-  if (state.mode === 'often') { state.docs = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; }  /* 〃 */
+  if (state.mode === 'often') { state.docsHome = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; state.docKinds = {}; state.docKindOpen = null; state.docBodies = {}; }  /* 〃 */
   if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; state.sciLessons = null; state.sciLessonsError = ''; state.sciSel = null; }  /* 〃 */
   withTransition(refresh);
 });

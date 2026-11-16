@@ -68,7 +68,7 @@ const BODY_MAX_BLOCKS = 200;
 const PUBLIC_FNS = [
   'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody', 'getProjectDetail',
   'updateLesson', 'createLesson', 'deleteLesson',
-  'getDocs', 'searchDocs', 'updateDoc',
+  'getDocs', 'searchDocs', 'updateDoc', 'getDocsHome', 'getDocsByKind', 'getDocBody',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
   'updateJournalDay',
   'getChecks', 'checkAck', 'checkTrash', 'checkUndoSupplement', 'checkAnswerYobina', 'checkAnswerTeian', 'checkAccess'
@@ -370,7 +370,9 @@ function mapDoc_(pg) {
     kinds: propMulti_(p['種類']),
     years: propMulti_(p['年度']),
     files: (p['添付'] && p['添付'].files || []).map(f => f.name || ''),
-    hinshutsu: !!(p['頻出'] && p['頻出'].checkbox)
+    hinshutsu: !!(p['頻出'] && p['頻出'].checkbox),
+    projectIds: propRelation_(p['DB_PROJECT']),
+    created: pg.created_time ? String(pg.created_time).slice(0, 10) : null
   };
 }
 
@@ -1033,7 +1035,44 @@ function createApi(env) {
     async searchDocs(q) {
       q = String(q || '').trim();
       if (!q) return [];
-      return (await queryAll_('docs', { filter: { property: '名前', title: { contains: q } } }, 30)).map(mapDoc_);
+      /* 名前とメモの両方から探す（2026-11-17） */
+      return (await queryAll_('docs', { filter: { or: [
+        { property: '名前', title: { contains: q } },
+        { property: 'メモ', rich_text: { contains: q } }
+      ] }, sorts: [{ timestamp: 'created_time', direction: 'descending' }] }, 40)).map(mapDoc_);
+    },
+
+    /* Docs タブの最初の画面: 〆切が近い（今日〜14日後）・最近届いた（7日）・頻出（2026-11-17） */
+    async getDocsHome() {
+      const today = todayJst_();
+      const [due, recent, often] = await Promise.all([
+        queryAll_('docs', { filter: dateRange_('〆切', today, addDays_(today, 14)), sorts: [{ property: '〆切', direction: 'ascending' }] }, 50),
+        queryAll_('docs', { filter: { timestamp: 'created_time', created_time: { on_or_after: addDays_(today, -7) } },
+                            sorts: [{ timestamp: 'created_time', direction: 'descending' }] }, 40),
+        queryAll_('docs', { filter: { property: '頻出', checkbox: { equals: true } } })
+      ]);
+      return { today, due: due.map(mapDoc_), recent: recent.map(mapDoc_), often: often.map(mapDoc_) };
+    },
+
+    /* 種類ごとの一覧（開いたときだけ取る）。新しい順に60件まで */
+    async getDocsByKind(kind) {
+      kind = String(kind || '').slice(0, 40);
+      if (!kind) return [];
+      return (await queryAll_('docs', { filter: { property: '種類', multi_select: { contains: kind } },
+        sorts: [{ timestamp: 'created_time', direction: 'descending' }] }, 60)).map(mapDoc_);
+    },
+
+    /* 書類を開いたとき: 本文（HTML）と添付の URL（Notion の URL は1時間で切れるので毎回取り直す） */
+    async getDocBody(docId) {
+      const pg = await fetchPageOf_(docId, 'docs', '書類DBのページ');
+      const files = (((pg.properties || {})['添付'] || {}).files || []).map(f => ({
+        name: f.name || 'ファイル',
+        url: (f.file && f.file.url) || (f.external && f.external.url) || null
+      })).filter(f => f.url && safeHref_(f.url));
+      bodyBudget = BODY_MAX_BLOCKS;
+      let html = await renderBlocks_(docId, 0);
+      if (bodyBudget <= 0) html += '<p class="trunc">…長いので途中まで。続きは「Notion で開く」から。</p>';
+      return { html, files };
     },
 
     async updateDoc(docId, patch) {

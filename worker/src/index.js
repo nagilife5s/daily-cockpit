@@ -66,7 +66,7 @@ const BODY_MAX_BLOCKS = 200;
 
 /* 画面から呼んでよい関数（これ以外は 404） */
 const PUBLIC_FNS = [
-  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody', 'getProjectDetail',
+  'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody', 'getProjectDetail', 'updateProject',
   'updateLesson', 'createLesson', 'deleteLesson',
   'getDocs', 'searchDocs', 'updateDoc', 'getDocsHome', 'getDocsByKind', 'getDocBody',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
@@ -371,6 +371,7 @@ function mapDoc_(pg) {
     years: propMulti_(p['年度']),
     files: (p['添付'] && p['添付'].files || []).map(f => f.name || ''),
     hinshutsu: !!(p['頻出'] && p['頻出'].checkbox),
+    shori: !!(p['処理'] && p['処理'].checkbox),
     projectIds: propRelation_(p['DB_PROJECT']),
     created: pg.created_time ? String(pg.created_time).slice(0, 10) : null
   };
@@ -927,6 +928,8 @@ function createApi(env) {
           url: pg.url || null,
           name: propTitle_(p['名前']),
           kind: propSelect_(p['種類']),
+          parentIds: propRelation_(p['親プロジェクト']),
+          created: pg.created_time ? String(pg.created_time).slice(0, 10) : null,
           status: propStatus_(p['ステータス']) || 'Not Started',
           importance: propSelect_(p['Importance']) || '',
           periodStart: period && period.start ? String(period.start).slice(0, 10) : null,
@@ -951,6 +954,20 @@ function createApi(env) {
     },
 
     /* 詳しい画面用: つながっているタスク（完了も）・書類・予定（2026-11-17） */
+    /* プロジェクトの完了（ステータスだけ。2026-11-17） */
+    async updateProject(pageId, patch) {
+      await fetchPageOf_(pageId, 'project', 'DB_PROJECT のページ');
+      patch = patch || {};
+      const props = {};
+      if ('status' in patch) {
+        if (['Not Started', 'In Progress', 'Done'].indexOf(patch.status) < 0) throw new Error('ステータスが不正です');
+        props['ステータス'] = { status: { name: patch.status } };
+      }
+      if (!Object.keys(props).length) return { ok: true };
+      await patchPage_(pageId, { properties: props }, 'プロジェクトの保存に失敗しました');
+      return { ok: true };
+    },
+
     async getProjectDetail(pageId) {
       assertId_(pageId);
       /* リレーションはページ側だと25件で切れるので、相手の DB から逆に引く */
@@ -1046,8 +1063,8 @@ function createApi(env) {
     async getDocsHome() {
       const today = todayJst_();
       const [due, recent, often] = await Promise.all([
-        queryAll_('docs', { filter: dateRange_('〆切', today, addDays_(today, 14)), sorts: [{ property: '〆切', direction: 'ascending' }] }, 50),
-        queryAll_('docs', { filter: { timestamp: 'created_time', created_time: { on_or_after: addDays_(today, -7) } },
+        queryAll_('docs', { filter: { and: [dateRange_('〆切', today, addDays_(today, 14)), { property: '処理', checkbox: { equals: false } }] }, sorts: [{ property: '〆切', direction: 'ascending' }] }, 50),
+        queryAll_('docs', { filter: { and: [{ timestamp: 'created_time', created_time: { on_or_after: addDays_(today, -7) } }, { property: '処理', checkbox: { equals: false } }] },
                             sorts: [{ timestamp: 'created_time', direction: 'descending' }] }, 40),
         queryAll_('docs', { filter: { property: '頻出', checkbox: { equals: true } } })
       ]);
@@ -1080,6 +1097,7 @@ function createApi(env) {
       patch = patch || {};
       const props = {};
       if ('hinshutsu' in patch) props['頻出'] = { checkbox: !!patch.hinshutsu };
+      if ('shori' in patch)     props['処理'] = { checkbox: !!patch.shori };   /* 書類の「完了」（2026-11-17） */
       if (!Object.keys(props).length) return { ok: true };
       await patchPage_(docId, { properties: props }, 'Notion への保存に失敗しました');
       return { ok: true };

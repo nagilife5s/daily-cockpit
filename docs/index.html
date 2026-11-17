@@ -303,6 +303,24 @@ dcApplyLook();
   }
   .top .brand { font-family: var(--font-brush); font-weight: 400; letter-spacing: .04em; font-size: 20px; }
   .top .spacer { flex: 1; }
+  /* PC ではタブを見出しの右に並べる（2026-11-17 本人要望）。狭いときは次の行の右端 */
+  @media (min-width: 701px) {
+    .top .brand { white-space: nowrap; }
+    .top .tabbar { flex: none; margin-left: auto; }
+    .top .tabbar button { padding: 6px 9px 5px; }
+  }
+  @media (min-width: 1000px) {
+    .top { flex-wrap: nowrap; }
+  }
+  @media (min-width: 1000px) and (max-width: 1279px) {
+    .top { gap: 8px; }
+    .top .tabbar button { padding: 5px 6px 4px; font-size: 9.5px; gap: 1px; }
+    .top .tabbar button .hicon svg { width: 16px; height: 16px; }
+    .top .weeknav .thisweek, .top .weeknav .calwrap { display: none; }
+    .top .brand { font-size: 16px !important; }
+    .top .jr-gauge .jg-rows { display: none !important; }
+    .top .jr-gauge { flex: none !important; min-width: 0 !important; width: auto !important; }   /* 幅が足りないので、今日の進み具合のバーだけ隠す（LV は残す） */
+  }
 
   /* ---------- バナー（支給画像の雰囲気を SVG で再現。
        本物の画像ファイルをもらったら background-image に差し替え、
@@ -1988,6 +2006,35 @@ dcApplyLook();
   .doc-kindrow { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 8px 2px; font-size: var(--fs-sm); color: var(--ink); cursor: pointer; }
   .doc-kindrow.open { font-weight: 700; color: var(--c-events); }
   .doc-clear { margin-left: auto; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); cursor: pointer; }
+  .pj-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 12px; }
+  .pj-chip { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+  .pj-chip.on { background: var(--c-events); border-color: var(--c-events); color: #fff; }
+  .pj-sort { margin-left: auto; }
+  .pj-showdone { font-size: var(--fs-xs); color: var(--ink-2); display: flex; align-items: center; gap: 3px; }
+  .pj-grid, .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .pj-card { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .pj-card.done { opacity: .6; }
+  .pj-cmain { display: flex; flex-direction: column; gap: 6px; text-align: left; border: 0; background: transparent; padding: 12px 12px 8px; cursor: pointer; color: var(--ink); }
+  .pj-ctop { display: flex; align-items: baseline; gap: 6px; }
+  .pj-ctop .tn { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+  .pj-ctop .imp { flex: none; font-size: 10px; letter-spacing: -1px; }
+  .pj-cmeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pj-cmeta .meta { font-size: var(--fs-xs); color: var(--ink-3); }
+  .pj-card .pj-next { white-space: normal; }
+  .pj-subs { border-top: 1px dashed var(--line); padding: 4px 12px; }
+  .pj-sub { display: flex; gap: 6px; width: 100%; border: 0; background: transparent; text-align: left; padding: 4px 0; font-size: var(--fs-xs); color: var(--ink-2); cursor: pointer; }
+  .pj-sub .tn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pj-sub .meta { flex: none; color: var(--ink-3); }
+  .pj-sub.done .tn { text-decoration: line-through; }
+  .pj-cacts { margin-top: auto; display: flex; justify-content: flex-end; padding: 0 10px 10px; }
+  .pj-cacts .act { font-size: var(--fs-xs); }
+  .doc-grid .doc-item { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+  .doc-grid .doc-item.open { grid-column: 1 / -1; background: var(--card); }
+  .doc-grid .doc-head { flex-wrap: wrap; align-items: center; height: 100%; padding: 10px 12px; }
+  .doc-grid .doc-head .tn { flex-basis: 100%; }
+  .doc-grid { margin-top: 6px; }
+  .doc-item .meta .shori { color: var(--g-2, #3F928A); font-weight: 700; }
+  .doc-sort { flex: none; }
   .ck-pj { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .ck-pend { display: block; margin-top: 10px; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); padding: 4px 2px; cursor: pointer; }
 }
@@ -2873,6 +2920,7 @@ var Store = {
     }, 400);
   },
   updateDoc: function (id, patch) { enqueueWrite('updateDoc', [id, patch]); },
+  updateProject: function (id, patch) { enqueueWrite('updateProject', [id, patch]); },
   /* ---- 時間割コマの編集（Phase 6）。保存後は done で週を取り直す ---- */
   updateLesson: function (id, data, done) {
     if (IS_GAS) { enqueueWrite('updateLesson', [id, data], done); return; }
@@ -3131,7 +3179,7 @@ var state = {
   projectNames: {},
   projectDetail: {},
   docsHome: null, docKinds: {}, docKindOpen: null, docBodies: {},   /* Docs タブ（2026-11-17） */   /* {projectId: {tasks, docs, schedule}}（2026-11-17） */
-  pjAddOpen: false, pjDocsAll: null,    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
+  pjAddOpen: false, pjDocsAll: null, pjShowDone: false,    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
   /* Main タブの表: 'day'(表示日の1列) | 'week'(表示週) | 'school'(学校全体)。
      2026-09-18 に 'mine'(自分) を Week に改名し Day を追加。最後に選んだものを覚える */
   gridMode: (function () {
@@ -6441,38 +6489,112 @@ function projSort(a, b) {
   return (b.importance || '').length - (a.importance || '').length;
 }
 
-function renderProjectList(root) {
-  ['仕事', 'プライベート'].forEach(function (kind) {
-    /* 終わったプロジェクトは出さない（本人要望 2026-09-01）。Not Started は「これから」なので残す */
-    var items = state.projects.filter(function (p) { return (p.kind || '仕事') === kind && p.status !== 'Done'; });
-    if (!items.length) return;
-    items.sort(projSort);
-    var sec = el('div', 'pj-group');
-    var h = el('h2', 'sec-h');
-    h.appendChild(iconSpan('project'));
-    h.appendChild(document.createTextNode(kind + ' '));
-    h.appendChild(el('span', 'cnt', String(items.length)));
-    sec.appendChild(h);
-    items.forEach(function (p) {
-      var b = el('button', 'pj-item' + (p.status === 'Done' ? ' done' : ''));
-      b.appendChild(el('span', 'tn', p.name));
-      if (p.importance) b.appendChild(el('span', 'imp', p.importance));
-      b.appendChild(projStatusChip(p.status));
-      var meta = [];
-      var left = pjDaysLeft(p.periodEnd);
-      if (p.periodEnd) meta.push('〜' + md(p.periodEnd) + (left != null && left >= 0 && left <= 60 ? '（あと' + left + '日）' : ''));
-      if (meta.length) b.appendChild(el('span', 'meta', meta.join('・')));
-      b.appendChild(pjProgressBar(p.progress));
-      if (p.progress && p.progress.next) b.appendChild(el('span', 'pj-next', '次: ' + p.progress.next.name + (p.progress.next.date ? '（' + md(p.progress.next.date) + '）' : '')));
-      b.addEventListener('click', function () {
-        state.projectId = p.id;
-        withTransition(renderProjectTab);
-      });
-      sec.appendChild(b);
-    });
-    root.appendChild(sec);
+/* ---- 一覧（カード。並べ替え・種類・親子・完了。2026-11-17） ---- */
+var PJ_SORTS = [['period', '期間の近い順'], ['new', '新しい順'], ['imp', '重要度順'], ['prog', '進捗の低い順']];
+function lsGetSafe(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+function lsSetSafe(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function pjSortFn(key) {
+  var stOrder = { 'In Progress': 0, 'Not Started': 1, 'Done': 2 };
+  return function (a, b) {
+    if (stOrder[a.status] !== stOrder[b.status]) return stOrder[a.status] - stOrder[b.status];
+    if (key === 'new') return (b.created || '').localeCompare(a.created || '');
+    if (key === 'imp') return (b.importance || '').length - (a.importance || '').length;
+    if (key === 'prog') {
+      var ra = a.progress && a.progress.total ? a.progress.done / a.progress.total : 2;
+      var rb = b.progress && b.progress.total ? b.progress.done / b.progress.total : 2;
+      return ra - rb;
+    }
+    return (a.periodEnd || '9999-99-99').localeCompare(b.periodEnd || '9999-99-99');
+  };
+}
+function setProjectStatus(p, status) {
+  var before = p.status;
+  p.status = status;
+  Store.updateProject(p.id, { status: status });
+  withTransition(renderProjectTab);
+  showToast('「' + p.name + '」を' + (status === 'Done' ? '完了にしました' : '再開しました'), function () {
+    p.status = before;
+    Store.updateProject(p.id, { status: before });
+    renderProjectTab();
   });
-  if (!root.children.length) root.appendChild(el('div', 'stateband', 'プロジェクトがありません'));
+}
+function pjCard(p, children) {
+  var c = el('div', 'pj-card' + (p.status === 'Done' ? ' done' : ''));
+  var open = el('button', 'pj-cmain');
+  var top = el('div', 'pj-ctop');
+  top.appendChild(el('span', 'tn', p.name));
+  if (p.importance) top.appendChild(el('span', 'imp', p.importance));
+  open.appendChild(top);
+  var meta = el('div', 'pj-cmeta');
+  meta.appendChild(projStatusChip(p.status));
+  var left = pjDaysLeft(p.periodEnd);
+  if (p.periodEnd) meta.appendChild(el('span', 'meta', '〜' + md(p.periodEnd) + (left != null && left >= 0 && left <= 60 ? '（あと' + left + '日）' : '')));
+  open.appendChild(meta);
+  open.appendChild(pjProgressBar(p.progress));
+  if (p.progress && p.progress.next) open.appendChild(el('div', 'pj-next', '次: ' + p.progress.next.name + (p.progress.next.date ? '（' + md(p.progress.next.date) + '）' : '')));
+  open.addEventListener('click', function () { state.projectId = p.id; withTransition(renderProjectTab); });
+  c.appendChild(open);
+  if (children && children.length) {
+    var sub = el('div', 'pj-subs');
+    children.forEach(function (ch) {
+      var r = el('button', 'pj-sub' + (ch.status === 'Done' ? ' done' : ''));
+      r.appendChild(el('span', 'tn', '└ ' + ch.name));
+      if (ch.progress && ch.progress.total) r.appendChild(el('span', 'meta', ch.progress.done + '/' + ch.progress.total));
+      r.addEventListener('click', function () { state.projectId = ch.id; withTransition(renderProjectTab); });
+      sub.appendChild(r);
+    });
+    c.appendChild(sub);
+  }
+  var acts = el('div', 'pj-cacts');
+  var done = el('button', 'act', p.status === 'Done' ? '↺ 再開' : '✓ 完了');
+  done.addEventListener('click', function (e) { e.stopPropagation(); setProjectStatus(p, p.status === 'Done' ? 'In Progress' : 'Done'); });
+  acts.appendChild(done);
+  c.appendChild(acts);
+  return c;
+}
+function renderProjectList(root) {
+  var sortKey = lsGetSafe('dc.pjSort', 'period');
+  var kindF = lsGetSafe('dc.pjKind', 'all');
+  var showDone = state.pjShowDone;
+
+  var bar = el('div', 'pj-bar');
+  [['all', 'すべて'], ['仕事', '仕事'], ['プライベート', 'プライベート']].forEach(function (k) {
+    var b = el('button', 'pj-chip' + (kindF === k[0] ? ' on' : ''), k[1]);
+    b.addEventListener('click', function () { lsSetSafe('dc.pjKind', k[0]); renderProjectTab(); });
+    bar.appendChild(b);
+  });
+  var sel = document.createElement('select');
+  sel.className = 'ksel pj-sort';
+  PJ_SORTS.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+  sel.value = sortKey;
+  sel.addEventListener('change', function () { lsSetSafe('dc.pjSort', sel.value); renderProjectTab(); });
+  bar.appendChild(sel);
+  var dl = el('label', 'pj-showdone');
+  var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!showDone;
+  cb.addEventListener('change', function () { state.pjShowDone = cb.checked; renderProjectTab(); });
+  dl.appendChild(cb); dl.appendChild(document.createTextNode(' 完了も表示'));
+  bar.appendChild(dl);
+  root.appendChild(bar);
+
+  var list = state.projects.filter(function (p) {
+    return (showDone || p.status !== 'Done') && (kindF === 'all' || (p.kind || '仕事') === kindF);
+  });
+  var ids = {};
+  list.forEach(function (p) { ids[p.id] = true; });
+  /* 親が一覧にいる子は、親のカードの中に出す */
+  var childrenOf = {};
+  var tops = [];
+  list.forEach(function (p) {
+    var par = (p.parentIds || []).filter(function (x) { return ids[x]; })[0];
+    if (par) (childrenOf[par] = childrenOf[par] || []).push(p);
+    else tops.push(p);
+  });
+  var fn = pjSortFn(sortKey);
+  tops.sort(fn);
+  var grid = el('div', 'pj-grid');
+  tops.forEach(function (p) { grid.appendChild(pjCard(p, (childrenOf[p.id] || []).sort(fn))); });
+  root.appendChild(grid);
+  if (!tops.length) root.appendChild(el('div', 'stateband', 'プロジェクトがありません'));
 }
 
 function renderProjectDetail(root, pj) {
@@ -6487,6 +6609,9 @@ function renderProjectDetail(root, pj) {
   head.appendChild(el('h2', null, pj.name));
   if (pj.importance) head.appendChild(el('span', 'imp', pj.importance));
   head.appendChild(projStatusChip(pj.status));
+  var pjDone = el('button', 'act', pj.status === 'Done' ? '↺ 再開' : '✓ 完了');
+  pjDone.addEventListener('click', function () { setProjectStatus(pj, pj.status === 'Done' ? 'In Progress' : 'Done'); });
+  head.appendChild(pjDone);
   if (pj.periodStart || pj.periodEnd) {
     var left = pjDaysLeft(pj.periodEnd);
     head.appendChild(el('span', 'meta', (pj.periodStart ? md(pj.periodStart) : '') + '〜' + (pj.periodEnd ? md(pj.periodEnd) : '') +
@@ -7087,6 +7212,7 @@ function docItem(doc, sec) {
   if (doc.deadline) meta.appendChild(el('span', 'due' + (doc.deadline <= todayStr() ? ' urgent' : ''), '〆' + mdw(doc.deadline)));
   else if (doc.jisshi) meta.appendChild(el('span', null, md(doc.jisshi)));
   if (doc.hinshutsu) meta.appendChild(el('span', 'star', '★'));
+  if (doc.shori) meta.appendChild(el('span', 'shori', '✓処理済'));
   if (meta.children.length) head.appendChild(meta);
   head.addEventListener('click', function () {
     state.docOpenId = state.docOpenId === okey ? null : okey;
@@ -7144,6 +7270,9 @@ function docItem(doc, sec) {
     var pin = el('button', 'act pin', doc.hinshutsu ? '★ 頻出から外す' : '☆ 頻出に追加');
     pin.addEventListener('click', function () { toggleHinshutsu(doc); });
     acts.appendChild(pin);
+    var sh = el('button', 'act', doc.shori ? '↺ 未処理に戻す' : '✓ 処理済みにする');
+    sh.addEventListener('click', function () { setDocShori(doc); });
+    acts.appendChild(sh);
     dt.appendChild(acts);
     item.appendChild(dt);
   }
@@ -7169,6 +7298,33 @@ function docSort(a, b) {
   if (ad !== bd) return ad < bd ? -1 : 1;
   return a.name < b.name ? -1 : 1;
 }
+var DOC_SORTS = [['due', '〆切の近い順'], ['new', '新しい順'], ['often', '頻出を先に']];
+function docSortBy(list) {
+  var k = lsGetSafe('dc.docSort', 'due');
+  return list.slice().sort(function (a, b) {
+    if (k === 'new') return (b.created || '').localeCompare(a.created || '');
+    if (k === 'often' && a.hinshutsu !== b.hinshutsu) return a.hinshutsu ? -1 : 1;
+    return docSort(a, b);
+  });
+}
+function setDocShori(doc) {
+  doc.shori = !doc.shori;
+  Store.updateDoc(doc.id, { shori: doc.shori });
+  var h = state.docsHome;
+  var snapDue = h ? h.due.slice() : null, snapRecent = h ? h.recent.slice() : null;
+  if (h && doc.shori) {             /* 処理済みは「〆切が近い」「最近届いた」から外す */
+    h.due = h.due.filter(function (d) { return d.id !== doc.id; });
+    h.recent = h.recent.filter(function (d) { return d.id !== doc.id; });
+  }
+  state.docOpenId = null;
+  renderDocsTab();
+  showToast('「' + doc.name + '」を' + (doc.shori ? '処理済みにしました' : '未処理に戻しました'), function () {
+    doc.shori = !doc.shori;
+    Store.updateDoc(doc.id, { shori: doc.shori });
+    if (h) { h.due = snapDue; h.recent = snapRecent; }
+    renderDocsTab();
+  });
+}
 function docSection(root, icon, title, list, emptyText, note, key) {
   var sec = el('div', 'doc-sec');
   var h = el('h2', 'sec-h');
@@ -7178,7 +7334,9 @@ function docSection(root, icon, title, list, emptyText, note, key) {
   if (note) h.appendChild(el('span', 'note', note));
   sec.appendChild(h);
   if (!list.length) sec.appendChild(el('div', 'doc-empty', emptyText));
-  list.forEach(function (d) { sec.appendChild(docItem(d, key)); });
+  var grid = el('div', 'doc-grid');
+  list.forEach(function (d) { grid.appendChild(docItem(d, key)); });
+  sec.appendChild(grid);
   root.appendChild(sec);
 }
 
@@ -7216,6 +7374,13 @@ function renderDocsTab() {
   go.addEventListener('click', doSearch);
   bar.appendChild(inp);
   bar.appendChild(go);
+  var dsel = document.createElement('select');
+  dsel.className = 'ksel doc-sort';
+  dsel.title = '頻出・種類ごと・検索結果の並び';
+  DOC_SORTS.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; dsel.appendChild(op); });
+  dsel.value = lsGetSafe('dc.docSort', 'due');
+  dsel.addEventListener('change', function () { lsSetSafe('dc.docSort', dsel.value); renderDocsTab(); });
+  bar.appendChild(dsel);
   root.appendChild(bar);
 
   if (state.docResults) {
@@ -7229,7 +7394,9 @@ function renderDocsTab() {
     rh.appendChild(clr);
     rs.appendChild(rh);
     if (!state.docResults.length) rs.appendChild(el('div', 'doc-empty', state.docResults._done ? '見つかりませんでした' : '検索中…'));
-    state.docResults.forEach(function (d) { rs.appendChild(docItem(d, 'q')); });
+    var rg = el('div', 'doc-grid');
+    docSortBy(state.docResults).forEach(function (d) { rg.appendChild(docItem(d, 'q')); });
+    rs.appendChild(rg);
     root.appendChild(rs);
   }
 
@@ -7258,7 +7425,7 @@ function renderDocsTab() {
 
   docSection(root, 'deadline', '〆切が近い', h.due.slice().sort(docSort), '2週間以内に〆切の書類はありません', '2週間以内', 'due');
   docSection(root, 'inbox', '最近届いた', h.recent, 'この1週間に届いた書類はありません', '7日以内', 'recent');
-  docSection(root, 'often', '頻出', h.often.slice().sort(docSort), '頻出の書類はまだありません。書類を開いて「☆ 頻出に追加」', null, 'often');
+  docSection(root, 'often', '頻出', docSortBy(h.often), '頻出の書類はまだありません。書類を開いて「☆ 頻出に追加」', null, 'often');
 
   /* 種類ごと（開いたときだけ取る） */
   var ks = el('div', 'doc-sec');
@@ -7286,7 +7453,9 @@ function renderDocsTab() {
       if (!list) ks.appendChild(el('div', 'doc-empty', '読み込み中…'));
       else if (!list.length) ks.appendChild(el('div', 'doc-empty', 'この種類の書類はありません'));
       else {
-        list.forEach(function (d) { ks.appendChild(docItem(d, 'k')); });
+        var kg = el('div', 'doc-grid');
+        docSortBy(list).forEach(function (d) { kg.appendChild(docItem(d, 'k')); });
+        ks.appendChild(kg);
         if (list.length >= 60) ks.appendChild(el('div', 'doc-empty', '新しい順に60件まで。古いものは検索で探してください'));
       }
     }

@@ -6536,13 +6536,17 @@ function pjCard(p, children) {
   c.appendChild(open);
   if (children && children.length) {
     var sub = el('div', 'pj-subs');
-    children.forEach(function (ch) {
-      var r = el('button', 'pj-sub' + (ch.status === 'Done' ? ' done' : ''));
-      r.appendChild(el('span', 'tn', '└ ' + ch.name));
-      if (ch.progress && ch.progress.total) r.appendChild(el('span', 'meta', ch.progress.done + '/' + ch.progress.total));
-      r.addEventListener('click', function () { state.projectId = ch.id; withTransition(renderProjectTab); });
-      sub.appendChild(r);
-    });
+    (function addRows(list, depth) {           /* 孫・ひ孫も字下げして出す（何段でも） */
+      list.forEach(function (ch) {
+        var r = el('button', 'pj-sub' + (ch.status === 'Done' ? ' done' : ''));
+        r.style.paddingLeft = (depth * 14) + 'px';
+        r.appendChild(el('span', 'tn', '└ ' + ch.name));
+        if (ch.progress && ch.progress.total) r.appendChild(el('span', 'meta', ch.progress.done + '/' + ch.progress.total));
+        r.addEventListener('click', function () { state.projectId = ch.id; withTransition(renderProjectTab); });
+        sub.appendChild(r);
+        if (ch._kids && ch._kids.length && depth < 5) addRows(ch._kids, depth + 1);   /* 親子が輪になっていても止まるように */
+      });
+    })(children, 0);
     c.appendChild(sub);
   }
   var acts = el('div', 'pj-cacts');
@@ -6591,6 +6595,7 @@ function renderProjectList(root) {
   });
   var fn = pjSortFn(sortKey);
   tops.sort(fn);
+  list.forEach(function (p) { p._kids = (childrenOf[p.id] || []).sort(fn); });
   var grid = el('div', 'pj-grid');
   tops.forEach(function (p) { grid.appendChild(pjCard(p, (childrenOf[p.id] || []).sort(fn))); });
   root.appendChild(grid);

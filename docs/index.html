@@ -2065,6 +2065,7 @@ dcApplyLook();
     .jr-sum { display: none; }
     .jr-title { font-size: 9.5px; -webkit-line-clamp: 3; }
   }
+  .tdy-journal .jr-entry { box-shadow: none; margin: 4px 0 0; }
   .jr-bar { display: flex; align-items: center; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
   .jr-search { flex: 1; min-width: 160px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink); }
   .jr-feed { max-width: 820px; margin: 0 auto; }
@@ -5314,6 +5315,7 @@ function renderTodayTab() {
       : (dd.loading ? '読み込み中…'
       : 'この日の Daily Journaling ページがまだありません（セットアップちゃんは毎朝5:00に走ります）')));
     root.appendChild(c);
+    if (state.todayView !== 'close' && !dd.loading) root.appendChild(setupJournalCard(date));   /* ページが無くても前日の日記は読める */
     return;
   }
   if (state.todayView === 'close') renderTodayClose(root, date, j, dd);
@@ -5404,6 +5406,31 @@ function doneButton(label, sub, pressed, onClick) {
 }
 
 /* --------------------------------------------------------------- Setup（朝） */
+function setupJournalCard(date) {
+  var sec = tdySec('前の日の日記', 'book');
+  sec.classList.add('tdy-journal');
+  var lo = addDays(date, -7), hi = addDays(date, -1);
+  var months = [hi.slice(0, 7)];
+  if (lo.slice(0, 7) !== months[0]) months.push(lo.slice(0, 7));
+  var waiting = months.filter(function (m) { return state.jrMonths[m] === undefined || state.jrMonths[m] === null; });
+  if (waiting.length) {
+    sec.appendChild(el('div', 'none', '読み込み中…'));
+    waiting.forEach(function (m) {
+      jrEnsureMonth(m, function () { if (state.mode === 'today') renderTodayTab(); });
+    });
+    return sec;
+  }
+  var rec = null;
+  months.forEach(function (m) {
+    (state.jrMonths[m] || []).forEach(function (r) {
+      if (r.date >= lo && r.date <= hi && (r.text || '').trim() && (!rec || r.date > rec.date)) rec = r;
+    });
+  });
+  if (!rec) { sec.appendChild(el('div', 'none', 'この1週間の日記はまだありません')); return sec; }
+  if (rec.date !== hi) sec.appendChild(el('div', 'st', '前日の日記はまだないので、' + mdw(rec.date) + ' の日記を出しています'));
+  sec.appendChild(jrEntry(rec));
+  return sec;
+}
 function renderTodaySetup(root, date, j, dd) {
   /* セットアップちゃんが「今日はどんな日」の提案に置いた ⚠️ 行だけを拾って先頭に出す。
      休暇管理簿との食い違いはここに来る（専用プロパティを増やさない判断。設計メモ 3-3） */
@@ -5413,6 +5440,9 @@ function renderTodaySetup(root, date, j, dd) {
     warns.forEach(function (l) { w.appendChild(el('p', null, l.trim())); });
     root.appendChild(w);
   }
+
+  /* 0. 前の日の日記（2026-11-20 本人要望）。前日が空なら、7日以内でいちばん近い日記を出す */
+  root.appendChild(setupJournalCard(date));
 
   /* 1. 勤務。2026-09-29: カードの幅がまちまちで読みにくかったので、見出し列をそろえた1本の表にした。
      空の項目も「—」で出して、日によって並びが変わらないようにする */
@@ -8417,7 +8447,7 @@ function jrEntry(rec) {
   art.appendChild(tx);
   if (body.length > 220) {
     var more = el('button', 'jr-more', open ? '▴ たたむ' : '▾ 続きを読む');
-    more.addEventListener('click', function () { state.jrOpen[rec.date] = !open; renderJournalTab(); });
+    more.addEventListener('click', function () { state.jrOpen[rec.date] = !open; if (state.mode === 'today') renderTodayTab(); else renderJournalTab(); });
     art.appendChild(more);
   }
   return art;

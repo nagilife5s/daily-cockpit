@@ -68,7 +68,7 @@ const BODY_MAX_BLOCKS = 200;
 const PUBLIC_FNS = [
   'getWeek', 'getDay', 'getMonth', 'getSchoolWideTimetable', 'getScienceUnits', 'getScienceUnitDetail', 'getScienceLessons', 'setLessonSeqs', 'updateUnitPlan', 'getProjects', 'getProjectBody', 'getProjectDetail', 'updateProject',
   'updateLesson', 'createLesson', 'deleteLesson',
-  'getDocs', 'searchDocs', 'updateDoc', 'getDocsHome', 'getDocsByKind', 'getDocBody',
+  'getDocs', 'searchDocs', 'updateDoc', 'getDocsHome', 'getDocsByKind', 'getDocBody', 'getJournalMonth',
   'updateTask', 'updateOrders', 'updateTasks', 'createTask', 'deleteTask',
   'updateJournalDay',
   'getChecks', 'checkAck', 'checkTrash', 'checkUndoSupplement', 'checkAnswerYobina', 'checkAnswerTeian', 'checkAccess'
@@ -1057,6 +1057,19 @@ function createApi(env) {
         { property: '名前', title: { contains: q } },
         { property: 'メモ', rich_text: { contains: q } }
       ] }, sorts: [{ timestamp: 'created_time', direction: 'descending' }] }, 40)).map(mapDoc_);
+    },
+
+    /* Journal タブ: その月の Daily Journaling all の「Journaling」（2026-11-20） */
+    async getJournalMonth(ym) {
+      if (!/^\d{4}-\d{2}$/.test(String(ym))) throw new Error('ym が不正です: ' + ym);
+      const lo = ym + '-01';
+      const hi = addDays_(addMonths_(ym, 1) + '-01', -1);
+      const rows = await queryAll_('journal', { filter: dateRange_('日付', lo, hi), sorts: [{ property: '日付', direction: 'ascending' }] });
+      return rows.map(pg => {
+        const p = pg.properties || {};
+        const d = toJst_(propDateRaw_(p['日付']));
+        return d ? { date: d.date, url: pg.url || null, text: noContent_(propText_(p['Journaling'])) } : null;
+      }).filter(Boolean);
     },
 
     /* Docs タブの最初の画面: 〆切が近い（今日〜14日後）・最近届いた（7日）・頻出（2026-11-17） */

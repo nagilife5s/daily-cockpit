@@ -346,6 +346,7 @@ dcApplyLook();
   #shell[data-mode="today"]   #tab-today,
   #shell[data-mode="science"] #tab-science,
   #shell[data-mode="month"]   #tab-month,
+  #shell[data-mode="journal"] #tab-journal,
   #shell[data-mode="project"] #tab-project,
   #shell[data-mode="often"]   #tab-often,
   #shell[data-mode="check"]   #tab-check { display: block; }
@@ -2036,6 +2037,47 @@ dcApplyLook();
   .doc-grid { margin-top: 6px; }
   .doc-item .meta .shori { color: var(--g-2, #3F928A); font-weight: 700; }
   .doc-sort { flex: none; }
+  /* Journal タブ（2026-11-20） */
+  .jr-count { font-size: var(--fs-xs); color: var(--ink-3); margin: -4px 0 8px; }
+  .jr-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  @media (min-width: 1100px) { .jr-wrap:has(.jr-pane) { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } }
+  .jr-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .jr-dow { text-align: center; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; padding: 2px 0; }
+  .jr-dow.we { color: var(--c-leave); }
+  .jr-cell { display: flex; flex-direction: column; gap: 3px; min-height: 112px; text-align: left; border: 1px solid var(--line); background: color-mix(in oklch, var(--card) 70%, transparent); border-radius: var(--radius); padding: 6px 7px; cursor: pointer; overflow: hidden; color: var(--ink); }
+  .jr-cell.has { background: var(--card); box-shadow: var(--shadow); }
+  .jr-cell.out { opacity: .35; }
+  .jr-cell.today { outline: 2px solid var(--c-events); outline-offset: -2px; }
+  .jr-cell.sel { border-color: var(--c-events); background: color-mix(in oklch, var(--c-events) 8%, var(--card)); }
+  .jr-day { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); }
+  .jr-title { font-size: 12px; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .jr-sum { font-size: 11px; color: var(--ink-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .jr-pane { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
+  @media (min-width: 1100px) { .jr-pane { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; } }
+  .jr-phead { display: flex; align-items: center; gap: 10px; }
+  .jr-phead .pj-open { margin-left: auto; }
+  .jr-close { border: 0; background: transparent; font-size: 20px; color: var(--ink-3); cursor: pointer; line-height: 1; }
+  .jr-ptitle { font-size: 16px; margin: 8px 0 4px; }
+  .jr-text { white-space: pre-wrap; font-size: var(--fs-sm); line-height: 1.75; overflow-wrap: anywhere; }
+  @media (max-width: 700px) {
+    .jr-grid { gap: 2px; }
+    .jr-cell { min-height: 54px; padding: 3px; }
+    .jr-sum { display: none; }
+    .jr-title { font-size: 9.5px; -webkit-line-clamp: 3; }
+  }
+  .jr-bar { display: flex; align-items: center; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .jr-search { flex: 1; min-width: 160px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink); }
+  .jr-feed { max-width: 820px; margin: 0 auto; }
+  .jr-mhead { font-size: var(--fs-sm); color: var(--ink-3); margin: 18px 4px 8px; letter-spacing: .08em; }
+  .jr-entry { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; margin-bottom: 10px; scroll-margin-top: 12px; }
+  .jr-entry.today { border-color: var(--c-events); }
+  .jr-ehead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .jr-edate { font-weight: 700; color: var(--c-events); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .jr-etitle { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; }
+  .jr-ehead .pj-open { margin-left: auto; }
+  .jr-text.clamp { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+  .jr-more { border: 0; background: transparent; color: var(--c-events); font-size: var(--fs-xs); font-weight: 600; padding: 4px 0 0; cursor: pointer; }
+  .jr-older { display: block; margin: 8px auto 24px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 6px 16px; font-size: var(--fs-xs); cursor: pointer; }
   .ck-pj { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .ck-pend { display: block; margin-top: 10px; border: 0; background: transparent; color: var(--ink-3); font-size: var(--fs-xs); padding: 4px 2px; cursor: pointer; }
 }
@@ -2069,6 +2111,7 @@ dcApplyLook();
       <button role="tab" data-mode="today"   data-icon="tick"    aria-selected="false" aria-controls="tab-today"><span class="tl">Setup</span></button>
       <button role="tab" data-mode="science" data-icon="beaker"  aria-selected="false" aria-controls="tab-science"><span class="tl">Science</span></button>
       <button role="tab" data-mode="month"   data-icon="month"   aria-selected="false" aria-controls="tab-month"><span class="tl">Month</span></button>
+      <button role="tab" data-mode="journal" data-icon="book"    aria-selected="false" aria-controls="tab-journal"><span class="tl">Journal</span></button>
       <button role="tab" data-mode="project" data-icon="project" aria-selected="false" aria-controls="tab-project"><span class="tl">Projects</span></button>
       <button role="tab" data-mode="often"   data-icon="often"   aria-selected="false" aria-controls="tab-often"><span class="tl">Docs</span></button>
     </nav>
@@ -2295,6 +2338,10 @@ dcApplyLook();
     <!-- ===================== 準備中タブ ===================== -->
     <div class="tab" id="tab-month">
       <div id="month-root"></div>
+    </div>
+
+    <div class="tab" id="tab-journal">
+      <div id="journal-root"></div>
     </div>
     <div class="tab" id="tab-project">
       <div id="project-root"></div>
@@ -2886,6 +2933,10 @@ var Store = {
     if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getChecks(); return; }
     setTimeout(function () { done(DUMMY_CHECKS); }, 400);
   },
+  getJournalMonth: function (ym, done, fail) {
+    if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getJournalMonth(ym); return; }
+    setTimeout(function () { done(DUMMY_JOURNAL.filter(function (d) { return d.date.slice(0, 7) === ym; })); }, 300);
+  },
   getDocsHome: function (done, fail) {
     if (IS_GAS) { google.script.run.withSuccessHandler(done).withFailureHandler(fail).getDocsHome(); return; }
     setTimeout(function () {
@@ -3179,6 +3230,7 @@ var state = {
   docResults: null,    /* Docs タブ: 検索結果（null=非表示） */
   projectNames: {},
   projectDetail: {},
+  jrYm: null, jrSel: null, jrMonths: {}, jrView: 'list', jrUntil: null, jrOpen: {}, jrQuery: '',   /* Journal タブ（2026-11-20） */
   docsHome: null, docKinds: {}, docKindOpen: null, docBodies: {},   /* Docs タブ（2026-11-17） */   /* {projectId: {tasks, docs, schedule}}（2026-11-17） */
   pjAddOpen: false, pjDocsAll: null, pjShowDone: false,    /* {projectId: 名前}。タスク行のプロジェクトチップ用（週 payload 同梱） */
   /* Main タブの表: 'day'(表示日の1列) | 'week'(表示週) | 'school'(学校全体)。
@@ -8301,6 +8353,245 @@ function renderCheckTab() {
   }, L.teiPend.length ? '反映待ち ' + L.teiPend.length : null, L.tei.length + L.teiPend.length));
 }
 
+/* ==========================================================================
+   Journal タブ（2026-11-20）。Daily Journaling all の「Journaling」（その日の日記）を
+   月のカレンダーで一覧する。日付を押すと全文と Notion へのリンク。表示のみ
+   ========================================================================== */
+var DUMMY_JOURNAL = [
+  ['2026-11-02', '文化祭が明けて、授業再開の初日。朝は職員会議と表彰式があり、進路関係の特別活動の記録提出が今日締め切りという連絡があった。'],
+  ['2026-11-05', '司書と話した夜、Moriが来た日\n11/5（木）\n\n理科は2年の気温と湿度、1年の光の導入、3年の慣性の法則の3コマ。放課後はバレー部、夜は9時まで学校司書の上田さんと生徒のことを長く話した。\n\n■ 授業\n・9:35〜10:25｜2年理科'],
+  ['2026-11-06', '天気記号と、二刀流の右腕AI\n11/6（金）\n\n朝は2年の天気の教材をAIと作り直し、授業では雲量と天気記号、16方位と風力を練習した。'],
+  ['2026-11-07', '焚き火カレーとSL、3月の引っ越し\n11/7（土）\n\n朝は3月までの予定を確かめ、引っ越しの日を決めた。午前は保育園の親子活動で、メタルマッチで火を起こしてカレーを作った。'],
+  ['2026-11-08', '自転車でお祭り、夜は唐揚げとピザ\n11/8（日）\n\n出勤のない日曜。昼前に自転車の練習をしてからお祭りへ行き、スーパーボールすくいと屋台を楽しんだ。'],
+  ['2026-11-09', '気圧とドローン、夜の絵本\n11/9（月）\n\n朝はワークシートの作り直しから始まり、学年をまたいで理科の授業が続いた。夜は絵本で一日を閉じた。'],
+  ['2026-11-10', '鏡の半分、園の給食、夜の消防車\n11/10（火）\n\n10時からは保育園で面談と給食試食会。午後は1年で全身を映す鏡の問題、3年でホバリングを作用・反作用で説明した。'],
+  ['2026-11-11', '〈屈折と面接練習、東高の三者面談〉\n11/11（水）\n\n朝は挨拶集会と生徒会選挙の説明から始まり、1年の屈折実験、3年の面接練習。放課後は進路の三者面談が続いた。'],
+  ['2026-11-12', 'そば打ちと、リカリアの誕生\n11/12（木）\n\n昼まで3年の伝承料理（角寿司とそば打ち）に立ち会った。夜は学校でクラフトの設計。'],
+  ['2026-11-13', '水圧の噴水と、お泊まり保育の朝\n11/13（金）\n\n3年に水圧、2年に気圧・雲・湿度、1年に屈折と全反射と、理科が3コマ続いた。'],
+  ['2026-11-14', '〈バレーの練習試合と、にぎやかな来客の夜〉\n11/14（土）\n\n午前は合同練習試合、午後は町中華と喫茶店。夜は来客で、子どもたちが寝るのは日付が変わる直前だった。'],
+  ['2026-11-15', '〈雨の日曜、ピザ生地とチキン南蛮、夜の年末調整〉\n11/15（日）\n\n雨の朝は家でピザ生地をこね、午後は子どもとチキン南蛮を作った。夜は年末調整の入力をやり切った。'],
+  ['2026-11-16', '〈浮力の実験と、動き出した個人懇談アプリ〉\n11/16（月）\n\n朝は新しい個人懇談アプリの使い方を伝え、4校時は3年の浮力の実験。放課後は進路面談。']
+].map(function (r) { return { date: r[0], url: '#', text: r[1] }; });
+
+/* 本文を 題・要約・残り に分ける。1行目が題（〈〉は外す）、日付だけの行は飛ばす */
+function jrParse(text) {
+  var lines = String(text || '').split('\n');
+  var i = 0, title = '', summary = '';
+  while (i < lines.length && !lines[i].trim()) i++;
+  var first = (lines[i] || '').trim();
+  var hasTitle = first && first.length <= 40 && !/[。]$/.test(first);
+  if (hasTitle) { title = first.replace(/^[〈〔【]|[〉〕】]$/g, ''); i++; }
+  while (i < lines.length && (!lines[i].trim() || /^\d{1,2}\/\d{1,2}[（(]/.test(lines[i].trim()))) i++;
+  var para = [];
+  while (i < lines.length && lines[i].trim() && !/^[■・]/.test(lines[i].trim())) { para.push(lines[i].trim()); i++; }
+  summary = para.join('');
+  return { title: title, summary: summary };
+}
+
+/* ---- 一覧（既定）: 新しい日から下へ、毎日の日記を続けて読む。下まで来たら前の月を足す ---- */
+function jrEnsureMonth(ym, cb) {
+  if (state.jrMonths[ym] !== undefined) { if (state.jrMonths[ym]) cb(); return; }
+  state.jrMonths[ym] = null;
+  Store.getJournalMonth(ym, function (res) { state.jrMonths[ym] = res || []; cb(); },
+    function () { delete state.jrMonths[ym]; });
+}
+function jrEntry(rec) {
+  var art = el('article', 'jr-entry' + (rec.date === realToday() ? ' today' : ''));
+  art.id = 'jr-' + rec.date;
+  var head = el('div', 'jr-ehead');
+  head.appendChild(el('span', 'jr-edate', mdw(rec.date)));
+  var pz = jrParse(rec.text);
+  if (pz.title) head.appendChild(el('span', 'jr-etitle', pz.title));
+  if (rec.url) {
+    var a = document.createElement('a');
+    a.className = 'pj-open'; a.href = rec.url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'Notion で開く ↗';
+    head.appendChild(a);
+  }
+  art.appendChild(head);
+  var body = rec.text.replace(/^\s*/, '');
+  if (pz.title) body = body.replace(/^[^\n]*\n?/, '');
+  body = body.replace(/^\s*\d{1,2}\/\d{1,2}[（(][^\n]*\n?/, '').replace(/^\s+/, '');
+  var open = !!state.jrOpen[rec.date];
+  var tx = el('div', 'jr-text' + (open ? '' : ' clamp'), body);
+  art.appendChild(tx);
+  if (body.length > 220) {
+    var more = el('button', 'jr-more', open ? '▴ たたむ' : '▾ 続きを読む');
+    more.addEventListener('click', function () { state.jrOpen[rec.date] = !open; renderJournalTab(); });
+    art.appendChild(more);
+  }
+  return art;
+}
+function renderJournalList(root) {
+  var curYm = (MOCK_TODAY || jstTodayString()).slice(0, 7);
+  if (!state.jrUntil) state.jrUntil = curYm;      /* ここまで（古い側）の月を読み込み済み */
+  var months = [];
+  for (var m = curYm; m >= state.jrUntil; m = addMonthsYm(m, -1)) months.push(m);
+  var missing = months.filter(function (m) { return state.jrMonths[m] === undefined; });
+  if (missing.length) {
+    root.appendChild(el('div', 'stateband', '読み込み中…'));
+    missing.forEach(function (m) { jrEnsureMonth(m, function () { if (state.mode === 'journal') renderJournalTab(); }); });
+    return;
+  }
+  var today = realToday();
+  var list = [];
+  months.forEach(function (m) { (state.jrMonths[m] || []).forEach(function (r) { if (r.date <= today && (r.text || '').trim()) list.push(r); }); });
+  list.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  if (state.jrQuery) {
+    var q = state.jrQuery;
+    list = list.filter(function (r) { return r.text.indexOf(q) >= 0; });
+  }
+
+  var feed = el('div', 'jr-feed');
+  var lastYm = '';
+  list.forEach(function (r) {
+    var ym = r.date.slice(0, 7);
+    if (ym !== lastYm) { feed.appendChild(el('h2', 'jr-mhead', (+ym.slice(0, 4)) + '年' + (+ym.slice(5, 7)) + '月')); lastYm = ym; }
+    feed.appendChild(jrEntry(r));
+  });
+  if (!list.length) feed.appendChild(el('div', 'stateband', state.jrQuery ? '見つかりませんでした' : '日記がまだありません'));
+  root.appendChild(feed);
+
+  /* さらに前の月（下まで来たら自動で読む。ボタンでも） */
+  var more = el('button', 'jr-older', '▾ ' + (+addMonthsYm(state.jrUntil, -1).slice(5, 7)) + '月の日記を読み込む');
+  more.addEventListener('click', jrLoadOlder);
+  root.appendChild(more);
+  if (window.IntersectionObserver) {
+    if (renderJournalList._io) renderJournalList._io.disconnect();
+    var io = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { io.disconnect(); jrLoadOlder(); } }, { rootMargin: '400px' });
+    io.observe(more);
+    renderJournalList._io = io;
+  }
+}
+function jrLoadOlder() {
+  if (state.jrUntil <= '2026-04') return;          /* R8 年度より前は無い */
+  state.jrUntil = addMonthsYm(state.jrUntil, -1);
+  renderJournalTab();
+}
+
+function renderJournalTab() {
+  var root = $('#journal-root');
+  var y = window.scrollY;
+  root.textContent = '';
+  /* 見方の切り替え（一覧が既定）と、本文の検索 */
+  var bar = el('div', 'jr-bar');
+  var view = state.jrView || 'list';
+  [['list', '一覧'], ['cal', 'カレンダー']].forEach(function (v) {
+    var b = el('button', 'pj-chip' + (view === v[0] ? ' on' : ''), v[1]);
+    b.addEventListener('click', function () { state.jrView = v[0]; window.scrollTo(0, 0); renderJournalTab(); });
+    bar.appendChild(b);
+  });
+  if (view === 'list') {
+    var inp = document.createElement('input');
+    inp.type = 'search'; inp.className = 'jr-search'; inp.placeholder = '日記の中を検索（読み込んだ月）';
+    inp.value = state.jrQuery || '';
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { state.jrQuery = inp.value.trim(); renderJournalTab(); } });
+    inp.addEventListener('search', function () { state.jrQuery = inp.value.trim(); renderJournalTab(); });
+    bar.appendChild(inp);
+  }
+  root.appendChild(bar);
+  if (view === 'list') { renderJournalList(root); window.scrollTo(0, y); return; }
+  renderJournalCal(root);
+}
+function renderJournalCal(root) {
+  var curYm = (MOCK_TODAY || jstTodayString()).slice(0, 7);
+  if (!state.jrYm) state.jrYm = curYm;
+  var ym = state.jrYm;
+
+  var nav = el('div', 'mnav');
+  var prev = el('button', null, '‹');
+  prev.addEventListener('click', function () { state.jrYm = addMonthsYm(ym, -1); state.jrSel = null; withTransition(renderJournalTab); });
+  var label = el('span', 'mlabel', (+ym.slice(0, 4)) + '年' + (+ym.slice(5, 7)) + '月');
+  var next = el('button', null, '›');
+  next.addEventListener('click', function () { state.jrYm = addMonthsYm(ym, 1); state.jrSel = null; withTransition(renderJournalTab); });
+  var thisM = el('button', 'thismonth', '今月');
+  thisM.disabled = ym === curYm;
+  thisM.addEventListener('click', function () { state.jrYm = curYm; state.jrSel = null; withTransition(renderJournalTab); });
+  nav.appendChild(prev); nav.appendChild(label); nav.appendChild(next); nav.appendChild(thisM);
+  nav.appendChild(el('span', 'mnote', '日付を押すと全文'));
+  root.appendChild(nav);
+
+  var data = state.jrMonths[ym];
+  if (data === undefined) {
+    state.jrMonths[ym] = null;
+    root.appendChild(el('div', 'stateband', '読み込み中…'));
+    Store.getJournalMonth(ym, function (res) {
+      state.jrMonths[ym] = res || [];
+      if (state.mode === 'journal' && state.jrYm === ym) withTransition(renderJournalTab);
+    }, function () {
+      delete state.jrMonths[ym];
+      if (state.mode !== 'journal') return;
+      root.appendChild(el('div', 'stateband', '取得に失敗しました。'));
+    });
+    return;
+  }
+  if (data === null) { root.appendChild(el('div', 'stateband', '読み込み中…')); return; }
+
+  var byDate = {};
+  data.forEach(function (d) { byDate[d.date] = d; });
+  var written = data.filter(function (d) { return (d.text || '').trim(); }).length;
+  root.appendChild(el('div', 'jr-count', '日記 ' + written + '日分'));
+
+  var wrap = el('div', 'jr-wrap');
+  /* カレンダー（月曜始まり） */
+  var grid = el('div', 'jr-grid');
+  ['月', '火', '水', '木', '金', '土', '日'].forEach(function (w, i) { grid.appendChild(el('div', 'jr-dow' + (i >= 5 ? ' we' : ''), w)); });
+  var first = ym + '-01';
+  var start = mondayOfStrict(first);
+  var lastDay = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
+  var end = ym + '-' + ('0' + lastDay).slice(-2);
+  var today = realToday();
+  for (var d = start; d <= end || dowOf(d) !== 1; d = addDays(d, 1)) {
+    var inMonth = d.slice(0, 7) === ym;
+    var rec = byDate[d];
+    var hasText = rec && (rec.text || '').trim();
+    var cell = el('button', 'jr-cell' + (inMonth ? '' : ' out') + (hasText ? ' has' : '') + (d === today ? ' today' : '') + (state.jrSel === d ? ' sel' : ''));
+    cell.appendChild(el('span', 'jr-day', String(+d.slice(8, 10))));
+    if (hasText && inMonth) {
+      var pz = jrParse(rec.text);
+      if (pz.title) cell.appendChild(el('span', 'jr-title', pz.title));
+      if (pz.summary) cell.appendChild(el('span', 'jr-sum', pz.summary));
+    }
+    (function (dd) {
+      cell.addEventListener('click', function () { state.jrSel = state.jrSel === dd ? null : dd; renderJournalTab(); });
+    })(d);
+    grid.appendChild(cell);
+    if (d > end && dowOf(d) === 0) break;
+  }
+  wrap.appendChild(grid);
+
+  /* 選んだ日の全文 */
+  var sel = state.jrSel && byDate[state.jrSel];
+  if (state.jrSel) {
+    var pane = el('div', 'jr-pane');
+    var h = el('div', 'jr-phead');
+    h.appendChild(el('b', null, mdw(state.jrSel)));
+    var close = el('button', 'jr-close', '×');
+    close.addEventListener('click', function () { state.jrSel = null; renderJournalTab(); });
+    if (sel && sel.url) {
+      var a = document.createElement('a');
+      a.className = 'pj-open'; a.href = sel.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'Notion で開く ↗';
+      h.appendChild(a);
+    }
+    h.appendChild(close);
+    pane.appendChild(h);
+    if (sel && (sel.text || '').trim()) {
+      var pz2 = jrParse(sel.text);
+      if (pz2.title) pane.appendChild(el('h3', 'jr-ptitle', pz2.title));
+      /* 題と日付の行は見出しに出したので、本文からは外す */
+      var body = sel.text.replace(/^\s*/, '');
+      if (pz2.title) body = body.replace(/^[^\n]*\n?/, '');
+      body = body.replace(/^\s*\d{1,2}\/\d{1,2}[（(][^\n]*\n?/, '').replace(/^\s+/, '');
+      pane.appendChild(el('div', 'jr-text', body));
+    } else {
+      pane.appendChild(el('div', 'pj-none', sel ? 'この日の日記はまだありません' : 'この日の Daily Journaling ページがありません'));
+    }
+    wrap.appendChild(pane);
+  }
+  root.appendChild(wrap);
+}
+
 /* --- 全体 refresh --- */
 function refresh() {
   $('#shell').dataset.mode = state.mode;
@@ -8329,6 +8620,7 @@ function refresh() {
   if (state.mode === 'science') { renderScienceTab(); return; }
   if (state.mode === 'project') { renderProjectTab(); return; }
   if (state.mode === 'month') { renderMonthTab(); return; }
+  if (state.mode === 'journal') { renderJournalTab(); return; }
   if (state.mode === 'often') { renderDocsTab(); return; }
   if (state.mode === 'check') { renderCheckTab(); return; }
   syncCheckBadge();
@@ -8478,6 +8770,7 @@ $('#tabs').addEventListener('click', function (e) {
   }
   if (state.mode === 'project') { state.projects = null; state.projectBodies = {}; state.projectDetail = {}; state.pjAddOpen = false; }  /* タブに入るたび Notion から取り直す */
   if (state.mode === 'month') { state.months = {}; state.monthYm = null; state.monthSel = null; }   /* 〃（今月に戻す） */
+  if (state.mode === 'journal') { state.jrMonths = {}; state.jrUntil = null; state.jrQuery = ''; }   /* タブに入るたび取り直す */
   if (state.mode === 'check') loadChecks(true);   /* タブに入るたび取り直す（2026-11-11） */
   if (state.mode === 'often') { state.docsHome = null; state.docResults = null; state.docQuery = ''; state.docOpenId = null; state.docKinds = {}; state.docKindOpen = null; state.docBodies = {}; }  /* 〃 */
   if (state.mode === 'science') { state.science = null; state.sciError = ''; state.sciDetail = {}; state.sciLessons = null; state.sciLessonsError = ''; state.sciSel = null; }  /* 〃 */

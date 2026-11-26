@@ -645,6 +645,15 @@ dcApplyLook();
   .tl-ev.tl-flow > .taskcard { overflow: visible; flex: 1 1 auto; min-height: 30px; }
   .tl-ev.tl-flow > .taskcard .nm { display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; }
   .tl-ev.tl-flow > .taskcard .tm { font-weight: 600; color: var(--ink-2); }
+  /* 開始／中断ボタンと実施時間の帯（2026-11-26） */
+  .taskcard .go { flex: none; align-self: flex-start; border: 1px solid color-mix(in oklch, var(--task) 45%, var(--mixbase)); background: var(--card); color: var(--task);
+    font-size: 11px; line-height: 1; width: 24px; height: 22px; border-radius: 999px; cursor: pointer; padding: 0; }
+  .taskcard .go:hover { background: color-mix(in oklch, var(--task) 15%, var(--card)); }
+  .taskcard .go.doing { background: var(--c-events); border-color: var(--c-events); color: #fff; }
+  .tl-run { position: absolute; left: 0; right: 0; pointer-events: none; z-index: 0;
+    background: color-mix(in oklch, var(--task) 12%, transparent); border-left: 4px solid color-mix(in oklch, var(--task) 70%, transparent); }
+  .tl-run.doing { background: color-mix(in oklch, var(--c-events) 14%, transparent); border-left-color: var(--c-events);
+    background-image: linear-gradient(to bottom, transparent calc(100% - 3px), var(--c-events) calc(100% - 3px)); }
   .tl-day .tl-col.lane-me, .tl-day .tl-col.lane-ai { border-left: 1px solid var(--line); }
   .tl-day .tl-col.lane-ai { background-color: color-mix(in oklch, var(--c-roster) 5%, var(--card)); }
   .tl-day .gh.lane-h { justify-content: center; font-size: var(--fs-sm); color: var(--ink-2); border-left: 1px solid var(--line); }
@@ -3683,9 +3692,11 @@ function timelineBox(it, lo) {
   if (it.kind === 'task' && it.flow) {   /* Day のタスクレーン: 高さは中身まかせ。位置は reflowTaskLanes が決める */
     box.classList.add('tl-flow');
     box.style.height = '';
-    card = taskCard(it.task);
+    card = taskCard(it.task, { timer: true });
+    var run = spentOf(it.task);                   /* 実績があれば、置いた時刻から実績の長さだけ帯を引く（reflowDayLanes が描く） */
+    if (run > 0) box.dataset.run = run;
     var fbd = card.querySelector('.bd');
-    if (fbd) fbd.insertBefore(el('div', 'tm', minToHm(it.start)), fbd.firstChild);
+    if (fbd) fbd.insertBefore(el('div', 'tm', minToHm(it.start) + (run > 0 ? '〜' + minToHm(it.start + run) + '（' + fmtMin(run) + '）' : '')), fbd.firstChild);
     box.appendChild(card);
     return box;
   }
@@ -3969,6 +3980,13 @@ function reflowDayLanes(g, H0) {
         cur = top + x.h + TL_GAP;
       });
     });
+  });
+  $all('.tl-ev.tl-flow[data-run]', g).forEach(function (box) {             /* タスクの実施時間の帯（開始した時刻〜今／実績の長さ） */
+    var st = +box.dataset.s, en = st + +box.dataset.run;
+    var band = el('div', 'tl-run' + (box.querySelector('.taskcard.is-doing') ? ' doing' : ''));
+    band.style.top = tlMapY(M, st) + 'px';
+    band.style.height = Math.max(tlMapY(M, en) - tlMapY(M, st), 3) + 'px';
+    box.parentNode.insertBefore(band, box.parentNode.firstChild);
   });
   $all('.tl-ev:not(.tl-flow)', g).forEach(function (box) {                  /* 授業・行事の枠も同じ目盛りで */
     var st = +box.dataset.s, en = +box.dataset.e;
@@ -4294,7 +4312,8 @@ function lessonCard(rec, run) {
   return c;
 }
 var CARD_STATUS = { 'Done': '✔ 済', 'In Progress': '▶ 進行中', '中断': '⏸ 中断' };
-function taskCard(task) {
+function taskCard(task, opts) {
+  opts = opts || {};
   var c = el('div', 'taskcard');
   c.dataset.tid = task.id;               /* グリッド上のドラッグ移動で使う */
   if (task.status === 'Done') c.classList.add('is-done');
@@ -4314,6 +4333,16 @@ function taskCard(task) {
   var sl = CARD_STATUS[task.status];
   if (sl) bd.appendChild(el('div', 'st', sl));
   c.appendChild(bd);
+  /* Day の時間帯に置いたタスク: ▶開始／⏸中断をカードの上で押せるように（2026-11-26。一覧から消えるとボタンも消えていた） */
+  if (opts.timer && task.status !== 'Done') {
+    var doing = task.status === 'In Progress';
+    var go = el('button', 'go' + (doing ? ' doing' : ''), doing ? '⏸' : '▶');
+    go.type = 'button';
+    go.title = doing ? '中断（ここまでの時間を記録）' : (task.status === '中断' ? '再開' : '開始');
+    go.setAttribute('aria-label', go.title + ': ' + task.name);
+    go.addEventListener('click', function (e) { e.stopPropagation(); doing ? pauseTask(task) : startTask(task); });
+    c.appendChild(go);
+  }
   /* ✕ コマから外す（日付は残して、校時の割り当てだけ消す。2026-10-23） */
   if (isPlaced(task) && task.status !== 'Done') {
     var un = el('button', 'unplace', '✕');
@@ -6348,7 +6377,7 @@ $('#grid').addEventListener('click', function (e) {
 
 /* ---- グリッド上のカード（タスク・授業）をドラッグして別のコマへ ---- */
 $('#grid').addEventListener('pointerdown', function (e) {
-  if (e.target.closest('.ck, .unplace, .sci-link, .rel-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
+  if (e.target.closest('.ck, .unplace, .go, .sci-link, .rel-link')) return;     /* ☐（完了ボタン）・「単元計画 ↗」はドラッグ開始にしない */
   var card = e.target.closest('.taskcard, .lesson');
   if (!card || !state.week) return;
   var isTask = card.classList.contains('taskcard');

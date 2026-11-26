@@ -1141,13 +1141,15 @@ dcApplyLook();
   .quickadd button:active { transform: translateY(1px) scale(.97); }
 
   /* コマ編集フォーム（Phase 6） */
-  .lesson-editor { width: min(400px, calc(100vw - 24px)); }
+  .lesson-editor { width: min(400px, calc(100vw - 24px)); max-height: 88vh; }   /* フィードバック欄が伸びても保存ボタンまで見えるように */
   .lesson-editor .fr { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
   .lesson-editor .fr > b { flex: none; width: 3.2em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; }
   .lesson-editor input[type="text"], .lesson-editor input[type="date"], .lesson-editor select {
     flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card);
     border-radius: var(--radius-sm); padding: 5px 8px; font-size: var(--fs-sm);
   }
+  .lesson-editor textarea.autogrow { flex: 1; min-width: 0; font: inherit; font-size: var(--fs-sm); line-height: 1.5; padding: 5px 8px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); resize: none; overflow-y: auto; max-height: 40vh; }
   .lesson-editor .plabels { display: flex; gap: 4px; flex-wrap: wrap; }
   .lesson-editor .plabels label {
     display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
@@ -1614,7 +1616,7 @@ dcApplyLook();
     .kchip.pchip { max-width: 40vw; }
 
     /* iOS は 16px 未満の入力にフォーカスすると自動ズームして戻らない */
-    .lesson-editor input[type="text"], .lesson-editor input[type="date"], .lesson-editor select,
+    .lesson-editor input[type="text"], .lesson-editor input[type="date"], .lesson-editor select, .lesson-editor textarea,
     .docsearch input { font-size: 16px; }
     .ksel { font-size: 16px; zoom: .68; }
   }
@@ -3916,33 +3918,42 @@ function renderTimeline(view) {
    カードの高さは描画後に実測する（名前が折り返す分）。Week は従来の一定スケール */
 var tlMapCur = null;               /* { lo, tops[], hs[] } 時間（時）ごとの上端と高さ(px)。Day だけ */
 var TL_GAP = 4;
+var TL_SEG = 15;                   /* 伸縮の単位（分）。1時間単位だと 11:35 のカードのために 11:00 からの空白まで伸びたので15分に（2026-11-26） */
 function tlMapY(M, m) {
   var n = M.hs.length;
-  var hi = Math.min(n - 1, Math.max(0, Math.floor((m - M.lo) / 60)));
-  return M.tops[hi] + (m - M.lo - hi * 60) / 60 * M.hs[hi];
+  var hi = Math.min(n - 1, Math.max(0, Math.floor((m - M.lo) / TL_SEG)));
+  return M.tops[hi] + (m - M.lo - hi * TL_SEG) / TL_SEG * M.hs[hi];
 }
 function tlMapMin(M, y) {
   var n = M.hs.length, hi = 0;
   for (var i = 0; i < n; i++) if (M.tops[i] <= y) hi = i;
-  return M.lo + hi * 60 + (y - M.tops[hi]) / M.hs[hi] * 60;
+  return M.lo + hi * TL_SEG + (y - M.tops[hi]) / M.hs[hi] * TL_SEG;
 }
 function reflowDayLanes(g, H0) {
   var cols = $all('.tl-col', g);
   if (!cols.length) return;
-  var lo = +cols[0].dataset.lo, base = 60 * TL_PX_PER_MIN, n = Math.max(1, Math.round(H0 / base));
+  var lo = +cols[0].dataset.lo, base = TL_SEG * TL_PX_PER_MIN, n = Math.max(1, Math.round(H0 / base));
   var hs = [], tops = [], i;
   for (i = 0; i < n; i++) hs[i] = base;
   var lanes = [];
   $all('.tl-col.lane-me, .tl-col.lane-ai', g).forEach(function (col) {      /* 時間ごとにカードの高さを実測して、その時間の高さを決める */
     var byH = {};
     $all('.tl-ev.tl-flow', col).forEach(function (box) {
-      var st = +box.dataset.s, hi = Math.min(n - 1, Math.max(0, Math.floor((st - lo) / 60)));
-      (byH[hi] = byH[hi] || []).push({ box: box, h: box.offsetHeight, frac: (st - lo - hi * 60) / 60 });
+      var st = +box.dataset.s, hi = Math.min(n - 1, Math.max(0, Math.floor((st - lo) / TL_SEG)));
+      (byH[hi] = byH[hi] || []).push({ box: box, h: box.offsetHeight, frac: (st - lo - hi * TL_SEG) / TL_SEG });
     });
     Object.keys(byH).forEach(function (k) {
-      var sum = 0;
-      byH[k].forEach(function (x) { sum += x.h + TL_GAP; });
-      hs[k] = Math.max(hs[k], sum);
+      /* カードを自分の時刻(frac)の位置に置いたまま収まる高さまで、その時間を伸ばす（2026-11-26。
+         以前は合計の高さだけ取って、はみ出す分を上へ押し上げていたので 11:35 のカードが 11:00 に出ていた） */
+      byH[k].sort(function (a, b) { return a.frac - b.frac; });
+      var H = hs[k];
+      for (var it = 0; it < 20; it++) {
+        var cur = 0;
+        byH[k].forEach(function (x) { cur = Math.max(x.frac * H, cur) + x.h + TL_GAP; });
+        if (cur <= H + 0.5) break;
+        H = cur;
+      }
+      hs[k] = Math.max(hs[k], H);
     });
     lanes.push(byH);
   });
@@ -3951,13 +3962,11 @@ function reflowDayLanes(g, H0) {
   var M = tlMapCur = { lo: lo, tops: tops, hs: hs };
   lanes.forEach(function (byH) {                                            /* カードは自分の時刻に置き、重なる分は下へ。時間の枠からはみ出さない */
     Object.keys(byH).forEach(function (k) {
-      var arr = byH[k], Hh = hs[k], cur = 0, restSum = 0;
-      arr.forEach(function (x) { restSum += x.h + TL_GAP; });
+      var arr = byH[k], Hh = hs[k], cur = 0;
       arr.forEach(function (x) {
-        var top = Math.min(Math.max(x.frac * Hh, cur), Hh - restSum);
+        var top = Math.max(x.frac * Hh, cur);       /* 同じ時刻のカードは下へ積む（上へは押し上げない） */
         x.box.style.top = (tops[k] + top) + 'px';
         cur = top + x.h + TL_GAP;
-        restSum -= x.h + TL_GAP;
       });
     });
   });
@@ -3968,7 +3977,7 @@ function reflowDayLanes(g, H0) {
   });
   $all('.tl-axis .hr, .tl-axis .pm, .tl-now', g).forEach(function (n2) { n2.style.top = tlMapY(M, +n2.dataset.m) + 'px'; });
   cols.forEach(function (col) {                                             /* 1時間ごとの罫線 */
-    for (var k = 0; k < n; k++) {
+    for (var k = 0; k < n; k += 60 / TL_SEG) {
       var hl = el('div', 'tl-hl');
       hl.style.top = tops[k] + 'px';
       col.insertBefore(hl, col.firstChild);
@@ -4741,12 +4750,11 @@ function taskMin(t) {
 }
 function isPlaced(t) { return taskMin(t) != null; }
 function periodAtMin(m) { var i = PERIOD_MIN.indexOf(m); return i >= 0 ? i + 1 : null; }
-/* ドロップ・クリックした位置（分）→ 置く時刻。校時の開始に近ければそこへ吸い付け、それ以外は15分刻み */
+/* ドロップ・クリックした位置（分）→ 置く時刻。15分刻みだけ（2026-11-26 本人要望: 校時への吸い付きをやめ、時間帯で置く） */
 function snapTaskMin(m) {
-  for (var i = 0; i < PERIOD_MIN.length; i++) if (Math.abs(m - PERIOD_MIN[i]) <= 8) return PERIOD_MIN[i];
   return Math.max(0, Math.min(24 * 60 - 15, Math.round(m / 15) * 15));
 }
-function taskPlaceLabel(t) { return t.period ? t.period + '校時' : (t.time || ''); }
+function taskPlaceLabel(t) { return t.time || (t.period ? t.period + '校時' : ''); }
 function taskDateValue(t) {   /* Notion に書く 実施予定日 の値 */
   if (!t.date) return null;
   var m = taskMin(t);
@@ -6183,7 +6191,7 @@ function openTaskPicker(day, p, x, y, min) {
 
   var pop = el('div', 'taskpicker card');
   pop.setAttribute('role', 'dialog');
-  pop.appendChild(el('h3', null, mdw(day) + ' ' + ((min != null && !periodAtMin(min)) ? minToHm(min) : p + '校時') + 'に割り当て'));
+  pop.appendChild(el('h3', null, mdw(day) + ' ' + (min != null ? minToHm(min) : p + '校時') + 'に割り当て'));
 
   /* このコマに置いてあるタスク（複数可）。「外す」で日付は残してコマだけ解除 */
   var placed = DUMMY_TASKS.filter(function (t) { return isOpen(t) && t.date === day && taskMin(t) === (min != null ? min : PERIOD_MIN[p - 1]); });
@@ -6305,9 +6313,8 @@ function showTlDropAt(col, startMin, lenMin, label) {
   tlDropEl.textContent = label;
   if (tlDropEl.parentNode !== col) col.appendChild(tlDropEl);
 }
-function showTaskDrop(col, m) {          /* タスクを置く時刻の影。校時の開始に吸い付いたときは校時名を出す */
-  var pp = periodAtMin(m);
-  showTlDropAt(col, m, pp ? PERIOD_LEN : 30, pp ? pp + '校時 ' + minToHm(m) : minToHm(m));
+function showTaskDrop(col, m) {          /* タスクを置く時刻の影。時刻だけ出す（2026-11-26） */
+  showTlDropAt(col, m, 15, minToHm(m));
 }
 function hideTlDrop() { if (tlDropEl && tlDropEl.parentNode) tlDropEl.parentNode.removeChild(tlDropEl); }
 $('#grid').addEventListener('click', function (e) {
@@ -7198,8 +7205,10 @@ function openLessonEditor(opts, x, y) {
   memoIn.value = rec ? (rec.memo || '') : '';
   pop.appendChild(frow('詳細メモ', memoIn));
 
-  var feedbackIn = document.createElement('input');
-  feedbackIn.type = 'text';
+  var feedbackIn = document.createElement('textarea');   /* 長文になるので全文が見える欄に。中身に合わせて高さが伸びる（2026-11-26） */
+  feedbackIn.rows = 1;
+  feedbackIn.className = 'autogrow';
+  feedbackIn.addEventListener('input', function () { feedbackIn.style.height = 'auto'; feedbackIn.style.height = feedbackIn.scrollHeight + 'px'; });
   feedbackIn.placeholder = '実施後の振り返り（やる前は空でよい）';
   feedbackIn.value = rec ? (rec.feedback || '') : '';
   pop.appendChild(frow('フィードバック', feedbackIn));
@@ -7264,6 +7273,7 @@ function openLessonEditor(opts, x, y) {
   pop.appendChild(btns);
 
   document.body.appendChild(pop);
+  feedbackIn.style.height = feedbackIn.scrollHeight + 'px';
   /* 今見ている画面の中央に出す（2026-11-26。クリック位置基準だと下の方で開いたとき見切れていた） */
   var W = pop.offsetWidth, H = pop.offsetHeight;
   pop.style.left = Math.max(8, (window.innerWidth - W) / 2) + 'px';

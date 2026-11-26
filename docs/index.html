@@ -1044,6 +1044,7 @@ dcApplyLook();
   .sci-lhead .sq { flex: none; width: 2.2em; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
   .sci-lhead .sm { flex-basis: 100%; margin-left: calc(2.2em + 8px); font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.5;
                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sci-lhead .sm.fb { color: var(--ink-2); }
   .sci-lhead .sq.diff { color: var(--c-leave); }
   .sci-lhead .dt { flex: none; font-size: var(--fs-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .sci-lhead .tn { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1060,10 +1061,13 @@ dcApplyLook();
   .sci-pick { flex: none; border: 0; border-left: 1px solid var(--line); background: color-mix(in oklch, var(--c-events) 10%, var(--mixbase)); color: var(--c-events); font-size: var(--fs-xs); font-weight: 700; padding: 0 10px; cursor: pointer; }
   .sci-pick.sug { background: var(--c-events); color: #fff; }
   .sci-link {
-    display: inline-block; margin-top: 3px; border: 1px solid color-mix(in oklch, var(--c-events) 40%, var(--mixbase));
-    background: var(--paper); color: var(--c-events); font-size: 10px; font-weight: 600;
-    border-radius: 999px; padding: 1px 8px; cursor: pointer; line-height: 1.5;
+    display: inline-block; position: relative; margin-top: 4px; border: 1px solid color-mix(in oklch, var(--c-events) 40%, var(--mixbase));
+    background: var(--paper); color: var(--c-events); font-size: 11px; font-weight: 600;
+    border-radius: 999px; padding: 3px 12px; cursor: pointer; line-height: 1.5;
   }
+  /* 見た目より外側までクリックを受ける（押し損ねてカード編集が開くのを防ぐ。2026-11-05） */
+  .sci-link::after { content: ''; position: absolute; inset: -7px -8px; }
+  .sci-link:hover { background: color-mix(in oklch, var(--c-events) 12%, var(--paper)); }
   /* 授業・行事カード上の関連リンク（書類・プロジェクト・道徳。2026-10-05）。クリックで Notion の該当ページへ */
   .rel-link {
     display: inline-block; margin: 3px 4px 0 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1839,6 +1843,9 @@ dcApplyLook();
     position: relative; background: linear-gradient(180deg, #FFF9E2, #F8E4AA); border: 2px solid #8A5A28; border-radius: 8px;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,.6), 0 6px 14px rgba(50,25,0,.35);
   }
+  /* テーマの .card/.taskpicker { position: relative } がポップアップ（.taskpicker.card）まで流れて、
+     ページ末尾に置かれ・フォーカスでそこへ飛んでいた（2026-11-26）。ポップアップは常に画面固定 */
+  [data-theme] .taskpicker.taskpicker { position: fixed; margin: 0; }
   [data-theme="block"] .week-side > section, [data-theme="block"] .week-main > section, [data-theme="block"] #pane-pc > section, [data-theme="block"] #pane-sp > section, [data-theme="block"] .tdy-sec { padding: 14px 18px 16px; margin-bottom: 16px; }
   [data-theme="block"] .week-side > section::after, [data-theme="block"] .week-main > section::after, [data-theme="block"] #pane-pc > section::after, [data-theme="block"] #pane-sp > section::after {
     content: "▼"; position: absolute; right: 14px; bottom: 5px; font-size: 11px; line-height: 1; color: #9A6A30; pointer-events: none;
@@ -7257,15 +7264,13 @@ function openLessonEditor(opts, x, y) {
   pop.appendChild(btns);
 
   document.body.appendChild(pop);
+  /* 今見ている画面の中央に出す（2026-11-26。クリック位置基準だと下の方で開いたとき見切れていた） */
   var W = pop.offsetWidth, H = pop.offsetHeight;
-  var px = Math.min(Math.max(8, (x || window.innerWidth / 2) - W / 2), window.innerWidth - W - 8);
-  var py = (y || 80) + 10;
-  if (py + H > window.innerHeight - 8) py = Math.max(8, (y || 80) - H - 10);
-  pop.style.left = px + 'px';
-  pop.style.top = py + 'px';
+  pop.style.left = Math.max(8, (window.innerWidth - W) / 2) + 'px';
+  pop.style.top = Math.max(8, (window.innerHeight - H) / 2) + 'px';
   pickerEl = pop;   /* 外側クリックで閉じる仕組みはピッカーと共用 */
   setTimeout(function () { document.addEventListener('pointerdown', pickerOutside, true); }, 0);
-  nameIn.focus();
+  nameIn.focus({ preventScroll: true });   /* フォーカスでページが飛ばないように */
 }
 
 /* 授業カードのクリック → 編集（週グリッド・SP 日送りリスト共通。document 委任） */
@@ -7842,6 +7847,7 @@ function sciLessonRow(l) {
   var u = l.unitId ? sciUnitById(l.unitId) : null;
   head.appendChild(el('span', 'un' + (u ? '' : ' none'), u ? ((u.hour != null ? u.hour + '. ' : '') + (u.name || '本時')) : '未紐づけ'));
   if (!sel && l.summary) head.appendChild(el('span', 'sm', l.summary));       /* 一覧にも概要を出す（選択中は下の編集欄に出る） */
+  if (!sel && l.feedback) head.appendChild(el('span', 'sm fb', 'FB: ' + l.feedback));   /* フィードバックも同じ形で（空なら出さない。2026-11-26） */
   head.addEventListener('click', function () { sciSelectLesson(l.id); });
   row.appendChild(head);
 
@@ -7862,6 +7868,7 @@ function sciLessonRow(l) {
     }
     field('概要', 'summary', 2);
     field('詳細メモ', 'memo', 3);
+    if (l.feedback) field('フィードバック', 'feedback', 3);   /* 空のコマは項目ごと出さない（入力は「コマを編集」から） */
     var acts = el('div', 'acts');
     var sg = l.unitId ? null : sciSuggest(l);
     if (sg) {

@@ -875,7 +875,7 @@ function createApi(env) {
         const unit = l.relations.filter(r => r.kind === '単元計画')[0];
         lessons.push({
           id: l.id, name: l.name, date: l.date, time: l.time, periodLabels: l.periodLabels,
-          grade: normGrade_(l.grade), cls: propSelect_((pg.properties || {})['クラス']), summary: l.summary, memo: l.memo,
+          grade: normGrade_(l.grade), cls: propSelect_((pg.properties || {})['クラス']), summary: l.summary, memo: l.memo, feedback: l.feedback,
           seq: propNumber_((pg.properties || {})['授業数']),
           unitId: unit ? unit.id : null
         });

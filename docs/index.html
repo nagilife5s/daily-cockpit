@@ -8781,6 +8781,36 @@ function loadWeek(weekStart) {
   Store.flush(fetchWeek);                      /* 書き込み中なら終わるのを待ってから読む */
 }
 var lastLoadAt = 0;
+/* 画面を開いたまま、Claude などが Notion 側でタスクを完了にしたのを拾う（2026-11-26 本人要望）。
+   表示中だけ1分ごとに週を読み直す。スケルトンは出さず、中身が変わったときだけ描き直す。
+   入力中・ポップアップ・ドラッグ中・書き込み待ちは見送る（次の回に回す） */
+var SILENT_RELOAD_MS = 60000;
+function quietBusy() {
+  if (pickerEl || document.querySelector('.dragging, .drag-card')) return true;
+  var a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)) return true;
+  return false;
+}
+function silentReloadWeek() {
+  if (document.visibilityState !== 'visible' || !state.weekStart || state.loading || state.error) return;
+  if (state.mode !== 'week' && state.mode !== 'today') return;
+  if (Date.now() - lastLoadAt < SILENT_RELOAD_MS - 5000 || quietBusy()) return;
+  var ws = state.weekStart, ep = writeEpoch;
+  lastLoadAt = Date.now();                     /* 応答待ちの間に二重に走らないように先に進める */
+  Store.flush(function () {
+    Store.getWeek(ws, function (payload) {
+      if (payload.weekStart !== state.weekStart || ep !== writeEpoch || quietBusy()) return;   /* 間に操作が入ったら捨てる */
+      var before = JSON.stringify([state.week && state.week.schedule, DUMMY_TASKS]);
+      var after = JSON.stringify([payload.schedule, payload.allTasks || DUMMY_TASKS]);
+      state.week = payload;
+      if (payload.allTasks) DUMMY_TASKS = payload.allTasks;
+      state.projectNames = payload.projectNames || state.projectNames;
+      state.relationTitles = payload.relationTitles || state.relationTitles;
+      if (before !== after) rerenderTasks();
+    }, function () { /* 失敗は黙って次の回に */ });
+  });
+}
+setInterval(silentReloadWeek, 15000);          /* 15秒ごとに見て、前回の読み込みから1分たっていれば読む */
 /* 画面幅が変わるとカードの折り返しが変わり、時間の高さがずれるので Day は描き直す */
 var resizeTimer = null;
 window.addEventListener('resize', function () {
